@@ -25,7 +25,7 @@ export function ControlView({
   teamSubmissions,
   individualSubmissions,
   gameId,
-  gameCode,
+  gameCode: _gameCode,
   onBack, 
   onUpdateState 
 }: ControlViewProps) {
