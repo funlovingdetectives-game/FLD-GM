@@ -11,6 +11,7 @@ interface ControlViewProps {
   teamSubmissions: Record<string, any> | any[];
   individualSubmissions: any[];
   gameId: string;
+  gameCode?: string | null;
   onBack: () => void;
   onUpdateState: (updates: Partial<GameState>) => Promise<void>;
 }
@@ -24,6 +25,7 @@ export function ControlView({
   teamSubmissions,
   individualSubmissions,
   gameId,
+  gameCode,
   onBack, 
   onUpdateState 
 }: ControlViewProps) {
