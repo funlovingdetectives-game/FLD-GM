@@ -34,6 +34,7 @@ export interface QuizQuestion {
   options?: string[];
   correctAnswer: string;
   points: number;
+  imageUrl?: string;
 }
 
 export interface GameConfig {
@@ -66,12 +67,16 @@ export interface IndividualSubmission {
 }
 
 export interface GameState {
+  isRunning: boolean;
   currentRound: number;
   timeRemaining: number;
   isPaused: boolean;
   teamQuizUnlocked: boolean;
   individualQuizUnlocked: boolean;
+  personalQuizUnlocked: boolean;
   scoresRevealed: boolean;
+  pauseVideoUrl?: string;
+  gameEnded: boolean;
   teamQuizSubmissions?: { [key: string]: TeamSubmission };
   individualQuizSubmissions?: IndividualSubmission[];
 }
