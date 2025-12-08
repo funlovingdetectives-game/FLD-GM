@@ -8,7 +8,7 @@ interface ControlViewProps {
   gameState: GameState;
   teamQuiz: any[];
   individualQuiz: any[];
-  teamSubmissions: any[];
+  teamSubmissions: Record<string, any> | any[];
   individualSubmissions: any[];
   gameId: string;
   onBack: () => void;

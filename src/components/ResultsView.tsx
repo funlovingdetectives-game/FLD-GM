@@ -237,7 +237,7 @@ export function ResultsView({
                 </div>
               ) : (
                 topIndividual.map((submission, index) => {
-                  const team = config.teams.find(t => t.id === submission.teamId);
+                  const team = config.teams.find(t => t.id === submission.team_id);
                   const isTop3 = index < 3;
 
                   return (
@@ -292,7 +292,7 @@ export function ResultsView({
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
                           }}>
-                            {submission.playerName}
+                            {submission.player_name}
                           </span>
                         </div>
                         <span style={{

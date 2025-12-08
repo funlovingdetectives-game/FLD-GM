@@ -230,10 +230,10 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
                 borderRadius: '9999px',
                 fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
                 fontWeight: 'bold',
-                backgroundColor: config.teamQuiz.length > 0 ? '#22c55e' : '#4B5563',
+                backgroundColor: config.teamQuiz?.length || 0 > 0 ? '#22c55e' : '#4B5563',
                 color: '#fff'
               }}>
-                {config.teamQuiz.length} vragen
+                {config.teamQuiz?.length || 0} vragen
               </span>
             </div>
             <p style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', color: '#9ca3af' }}>
@@ -261,10 +261,10 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
                 borderRadius: '9999px',
                 fontSize: 'clamp(0.75rem, 2vw, 0.875rem)',
                 fontWeight: 'bold',
-                backgroundColor: config.individualQuiz.length > 0 ? '#22c55e' : '#4B5563',
+                backgroundColor: config.individualQuiz?.length || 0 > 0 ? '#22c55e' : '#4B5563',
                 color: '#fff'
               }}>
-                {config.individualQuiz.length} vragen
+                {config.individualQuiz?.length || 0} vragen
               </span>
             </div>
             <p style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', color: '#9ca3af' }}>

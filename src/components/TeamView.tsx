@@ -201,7 +201,7 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
     let calculatedScore = 0;
     answers.forEach((answer, idx) => {
       const question = questions[idx];
-      if (question.type === 'multiple') {
+      if (question.type === 'multiple-choice') {
         if (answer === question.correctAnswer) {
           calculatedScore += question.points;
         }
@@ -907,7 +907,7 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
                       />
                     )}
 
-                    {question.type === 'multiple' && question.options ? (
+                    {question.type === 'multiple-choice' && question.options ? (
                       <div style={{ display: 'grid', gap: '0.5rem' }}>
                         {question.options.map((option, optIdx) => (
                           <button
