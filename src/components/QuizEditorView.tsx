@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Save, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Save, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Branding, QuizQuestion } from '../types/game';
 
