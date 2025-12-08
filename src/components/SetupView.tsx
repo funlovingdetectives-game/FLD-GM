@@ -800,23 +800,65 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
 
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: 'clamp(0.75rem, 2vw, 0.875rem)', color: '#9ca3af' }}>
-                      👥 Aantal Leden
+                      👥 Teamleden
                     </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="20"
-                      placeholder="Bijv. 6"
+                    {team.members.map((member, mIdx) => (
+                      <div key={mIdx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <input
+                          type="text"
+                          value={member}
+                          onChange={(e) => {
+                            const newMembers = [...team.members];
+                            newMembers[mIdx] = e.target.value;
+                            updateTeam(index, 'members', newMembers);
+                          }}
+                          placeholder={`Teamlid ${mIdx + 1}`}
+                          style={{
+                            flex: 1,
+                            backgroundColor: '#1f2937',
+                            color: '#fff',
+                            padding: 'clamp(0.5rem, 2vw, 0.75rem)',
+                            borderRadius: '0.5rem',
+                            border: '2px solid #4B5563',
+                            fontSize: 'clamp(0.875rem, 2vw, 1rem)'
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            const newMembers = team.members.filter((_, i) => i !== mIdx);
+                            updateTeam(index, 'members', newMembers);
+                          }}
+                          style={{
+                            padding: '0.5rem',
+                            backgroundColor: '#ef4444',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => updateTeam(index, 'members', [...team.members, ''])}
                       style={{
-                        width: '100%',
-                        backgroundColor: '#1f2937',
+                        marginTop: '0.5rem',
+                        padding: '0.5rem 1rem',
+                        backgroundColor: '#22c55e',
                         color: '#fff',
-                        padding: 'clamp(0.5rem, 2vw, 0.75rem)',
-                        borderRadius: '0.5rem',
-                        border: '2px solid #4B5563',
-                        fontSize: 'clamp(0.875rem, 2vw, 1rem)'
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        cursor: 'pointer',
+                        fontSize: '0.875rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
                       }}
-                    />
+                    >
+                      <Plus size={16} /> Voeg teamlid toe
+                    </button>
                   </div>
                 </div>
 
