@@ -60,14 +60,15 @@ export function useGame(gameId: string | null) {
 
       if (state) {
         setGameState({
-          isRunning: state.is_running,
-          currentRound: state.current_round,
-          isPaused: state.is_paused,
-          timeRemaining: state.time_remaining,
-          teamQuizUnlocked: state.team_quiz_unlocked,
-          personalQuizUnlocked: state.individual_quiz_unlocked,
-          scoresRevealed: state.scores_revealed,
-          pauseVideoUrl: state.pause_video_url,
+          isRunning: state.is_running || false,
+          currentRound: state.current_round || 0,
+          isPaused: state.is_paused || false,
+          timeRemaining: state.time_remaining || 0,
+          teamQuizUnlocked: state.team_quiz_unlocked || false,
+          individualQuizUnlocked: state.individual_quiz_unlocked || false,
+          personalQuizUnlocked: state.individual_quiz_unlocked || false, // Alias
+          scoresRevealed: state.scores_revealed || false,
+          pauseVideoUrl: state.pause_video_url || undefined,
           gameEnded: state.game_ended || false
         });
       }
@@ -101,10 +102,10 @@ export function useGame(gameId: string | null) {
         const subsMap: Record<string, TeamSubmission> = {};
         tSubs.forEach(sub => {
           subsMap[sub.team_id] = {
-            teamId: sub.team_id,
-            answers: sub.answers as string[],
-            score: sub.score,
-            submitted: sub.submitted
+            team_id: sub.team_id,
+            answers: (sub.answers as any) || {},
+            score: sub.score || 0,
+            submitted: sub.submitted || false
           };
         });
         setTeamSubmissions(subsMap);
@@ -118,10 +119,11 @@ export function useGame(gameId: string | null) {
 
       if (iSubs) {
         setIndividualSubmissions(iSubs.map(sub => ({
-          teamId: sub.team_id,
-          playerName: sub.player_name,
-          answers: sub.answers as string[],
-          score: sub.score
+          team_id: sub.team_id,
+          player_name: sub.player_name,
+          answers: (sub.answers as any) || {},
+          score: sub.score || 0,
+          submitted: true
         })));
       }
     } catch (error) {
@@ -167,7 +169,7 @@ export function useGame(gameId: string | null) {
         is_paused: newState.isPaused,
         time_remaining: newState.timeRemaining,
         team_quiz_unlocked: newState.teamQuizUnlocked,
-        individual_quiz_unlocked: newState.personalQuizUnlocked,
+        individual_quiz_unlocked: newState.individualQuizUnlocked,
         scores_revealed: newState.scoresRevealed,
         pause_video_url: newState.pauseVideoUrl,
         game_ended: newState.gameEnded,
@@ -175,7 +177,7 @@ export function useGame(gameId: string | null) {
       });
   };
 
-  const submitTeamQuiz = async (teamId: string, answers: string[], score: number) => {
+  const submitTeamQuiz = async (teamId: string, answers: { [key: string]: string }, score: number) => {
     if (!gameId) return;
 
     await supabase
@@ -192,7 +194,7 @@ export function useGame(gameId: string | null) {
     await loadGame();
   };
 
-  const submitIndividualQuiz = async (teamId: string, playerName: string, answers: string[], score: number) => {
+  const submitIndividualQuiz = async (teamId: string, playerName: string, answers: { [key: string]: string }, score: number) => {
     if (!gameId) return;
 
     await supabase

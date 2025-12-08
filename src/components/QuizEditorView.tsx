@@ -24,9 +24,10 @@ export function QuizEditorView({
   );
 
   function createEmptyQuestion(): QuizQuestion {
+      id: `q-${Date.now()}-${Math.random()}`,
     return {
       question: '',
-      type: 'multiple',
+      type: 'multiple-choice',
       correctAnswer: '',
       options: ['', '', '', ''],
       points: 10
@@ -232,8 +233,8 @@ export function QuizEditorView({
                   <select
                     value={question.type}
                     onChange={(e) => updateQuestion(qIndex, {
-                      type: e.target.value as 'open' | 'multiple',
-                      options: e.target.value === 'multiple' ? ['', '', '', ''] : undefined
+                      type: e.target.value as 'open' | 'multiple-choice',
+                      options: e.target.value === 'multiple-choice' ? ['', '', '', ''] : undefined
                     })}
                     style={{
                       width: '100%',
@@ -280,7 +281,7 @@ export function QuizEditorView({
                 </div>
               </div>
 
-              {question.type === 'multiple' && (
+              {question.type === 'multiple-choice' && (
                 <div style={{ marginBottom: '1rem' }}>
                   <div style={{
                     display: 'flex',
@@ -368,7 +369,7 @@ export function QuizEditorView({
                 }}>
                   Correct Antwoord
                 </label>
-                {question.type === 'multiple' ? (
+                {question.type === 'multiple-choice' ? (
                   <select
                     value={question.correctAnswer}
                     onChange={(e) => updateQuestion(qIndex, { correctAnswer: e.target.value })}
