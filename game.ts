@@ -27,6 +27,15 @@ export interface Team {
   score: number;
 }
 
+export interface QuizQuestion {
+  id: string;
+  question: string;
+  type: 'multiple-choice' | 'open';
+  options?: string[];
+  correctAnswer: string;
+  points: number;
+}
+
 export interface GameConfig {
   gameName: string;
   numStations: number;
@@ -36,38 +45,33 @@ export interface GameConfig {
   pauseAfterRound: number;
   stations: Station[];
   teams: Team[];
-  routes: Record<string, string[]>;
-}
-
-export interface QuizQuestion {
-  question: string;
-  type: 'open' | 'multiple';
-  correctAnswer: string;
-  options?: string[];
-  imageUrl?: string;
-  points: number;
-}
-
-export interface GameState {
-  isRunning: boolean;
-  currentRound: number;
-  isPaused: boolean;
-  timeRemaining: number;
-  teamQuizUnlocked: boolean;
-  personalQuizUnlocked: boolean;
-  scoresRevealed: boolean;
+  routes: { [key: string]: string[] };
+  teamQuiz?: QuizQuestion[];
+  individualQuiz?: QuizQuestion[];
 }
 
 export interface TeamSubmission {
-  teamId: string;
-  answers: string[];
-  score: number;
+  team_id: string;
   submitted: boolean;
+  score: number;
+  answers: { [key: string]: string };
 }
 
 export interface IndividualSubmission {
-  teamId: string;
-  playerName: string;
-  answers: string[];
+  player_name: string;
+  team_id: string;
+  submitted: boolean;
   score: number;
+  answers: { [key: string]: string };
+}
+
+export interface GameState {
+  currentRound: number;
+  timeRemaining: number;
+  isPaused: boolean;
+  teamQuizUnlocked: boolean;
+  individualQuizUnlocked: boolean;
+  scoresRevealed: boolean;
+  teamQuizSubmissions?: { [key: string]: TeamSubmission };
+  individualQuizSubmissions?: IndividualSubmission[];
 }
