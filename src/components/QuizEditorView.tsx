@@ -23,9 +23,9 @@ export function QuizEditorView({
       : [createEmptyQuestion()]
   );
 
-  function createEmptyQuestion(): QuizQuestion {
-      id: `q-${Date.now()}-${Math.random()}`,
+ function createEmptyQuestion(): QuizQuestion {
     return {
+      id: `q-${Date.now()}-${Math.random()}`,
       question: '',
       type: 'multiple-choice',
       correctAnswer: '',
@@ -33,7 +33,6 @@ export function QuizEditorView({
       points: 10
     };
   }
-
   function addQuestion() {
     setQuestions([...questions, createEmptyQuestion()]);
   }
