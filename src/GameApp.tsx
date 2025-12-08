@@ -8,6 +8,7 @@ import { TeamView } from './components/TeamView';
 import { LoadGameView } from './components/LoadGameView';
 import { QuizEditorView } from './components/QuizEditorView';
 import { ResultsView } from './components/ResultsView';
+import { IndividualQuizView } from './components/IndividualQuizView';
 import { initAudio, playRoundSound } from './utils/sound';
 import { useGame } from './hooks/useGame';
 import type { Branding, GameConfig, GameState, QuizQuestion } from './types/game';
@@ -565,6 +566,15 @@ export function GameApp() {
     return (
       <TeamView
         gameId={currentGameId || undefined}
+        onExit={() => setView('home')}
+      />
+    );
+  }
+  if (view === 'individual') {
+    return (
+      <IndividualQuizView
+        gameId={currentGameId || ''}
+        gameCode={gameCode || ''}
         onExit={() => setView('home')}
       />
     );
