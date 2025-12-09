@@ -20,7 +20,6 @@ export function PlayerApp() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [gameCode, setGameCode] = useState(searchParams.get('code') || '');
   const [gameId, setGameId] = useState<string | null>(null);
-  const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
   const [branding, setBranding] = useState<Branding>(defaultBranding);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -58,7 +57,6 @@ export function PlayerApp() {
       }
 
       setGameId(data.id);
-      setGameConfig(data.config as GameConfig);
       setBranding(data.branding as Branding || defaultBranding);
       setSearchParams({ code });
     } catch (err) {
@@ -80,8 +78,7 @@ export function PlayerApp() {
     return (
       <PlayerJoinView
         branding={branding}
-        error={error}
-        onJoin={handleJoinGame}
+        onJoinGame={handleJoinGame}
       />
     );
   }
@@ -117,7 +114,6 @@ export function PlayerApp() {
         onExit={() => {
           setGameCode('');
           setGameId(null);
-          setGameConfig(null);
           setSearchParams({});
         }}
       />

@@ -369,6 +369,7 @@ export function GameApp() {
       <SetupView
         branding={localBranding}
         initialConfig={localConfig}
+        onBack={() => setView('home')}
         onSave={async (newConfig) => {
           console.log('💾 === SAVE GAME START ===');
           console.log('Current game ID:', currentGameId);
