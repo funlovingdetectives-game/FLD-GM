@@ -6,84 +6,83 @@ import { TeamView } from './components/TeamView';
 import type { Branding, GameConfig } from './types/game';
 
 const defaultBranding: Branding = {
-  companyName: 'FUN LOVING DETECTIVES',
   logoUrl: '',
-  primaryColor: '#fbbf24',
+  companyName: 'FUN LOVING DETECTIVES',
+  primaryColor: '#FFB800',
   secondaryColor: '#000000',
   headerFont: 'system-ui',
-  bodyFont: 'system-ui',
+  bodyFont: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
   customFontUrl: '',
   customFontName: ''
 };
 
 export function PlayerApp() {
-  const [searchParams] = useSearchParams();
-  const [branding, setBranding] = useState<Branding>(defaultBranding);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [gameCode, setGameCode] = useState(searchParams.get('code') || '');
+  const [gameId, setGameId] = useState<string | null>(null);
   const [gameConfig, setGameConfig] = useState<GameConfig | null>(null);
-  const [gameCode, setGameCode] = useState<string>(searchParams.get('code') || '');
+  const [branding, setBranding] = useState<Branding>(defaultBranding);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    if (gameCode) {
-      loadGame(gameCode);
+    const codeFromUrl = searchParams.get('code');
+    if (codeFromUrl && codeFromUrl !== gameCode) {
+      setGameCode(codeFromUrl);
+      loadGameByCode(codeFromUrl);
     }
-  }, [gameCode]);
+  }, [searchParams]);
 
-  async function loadGame(code: string) {
+  async function loadGameByCode(code: string) {
+    if (!code) return;
+
     setLoading(true);
     setError('');
 
-    const { data, error: loadError } = await supabase
-      .from('games')
-      .select('id, name, code, config, branding')
-      .eq('code', code)
-      .maybeSingle();
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('games')
+        .select('id, name, code, config, branding')
+        .eq('code', code)
+        .maybeSingle();
 
-    if (loadError) {
-      console.error('Load error:', loadError);
-      setError('Fout bij ophalen van spel. Probeer opnieuw.');
+      if (fetchError) {
+        console.error('Supabase error:', fetchError);
+        setError('Er ging iets mis bij het laden van het spel');
+        return;
+      }
+
+      if (!data) {
+        setError('Spelcode niet gevonden. Controleer de code en probeer opnieuw.');
+        return;
+      }
+
+      setGameId(data.id);
+      setGameConfig(data.config as GameConfig);
+      setBranding(data.branding as Branding || defaultBranding);
+      setSearchParams({ code });
+    } catch (err) {
+      console.error('Error loading game:', err);
+      setError('Er ging iets mis');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if (!data) {
-      setError('Spelcode niet gevonden. Controleer de code en probeer opnieuw.');
-      setLoading(false);
-      return;
-    }
-
-    setBranding(data.branding || defaultBranding);
-    setGameConfig(data.config);
-    setLoading(false);
   }
 
   function handleJoinGame(code: string) {
-    setGameCode(code);
+    const upperCode = code.toUpperCase().trim();
+    setGameCode(upperCode);
+    loadGameByCode(upperCode);
   }
 
-  // Show join screen if no game code
+  // Show join screen if no code
   if (!gameCode || error) {
     return (
-      <div>
-        <PlayerJoinView branding={branding} onJoinGame={handleJoinGame} />
-        {error && (
-          <div style={{
-            position: 'fixed',
-            top: '2rem',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#ef4444',
-            color: '#fff',
-            padding: '1rem 2rem',
-            borderRadius: '0.5rem',
-            boxShadow: '0 4px 6px rgba(0,0,0,0.3)',
-            zIndex: 1000
-          }}>
-            {error}
-          </div>
-        )}
-      </div>
+      <PlayerJoinView
+        branding={branding}
+        error={error}
+        onJoin={handleJoinGame}
+      />
     );
   }
 
@@ -110,13 +109,17 @@ export function PlayerApp() {
     );
   }
 
-  // Show game (TeamView for now - this is what players see)
-  if (gameConfig) {
+  // Show game (TeamView for players)
+  if (gameId) {
     return (
       <TeamView
-        branding={branding}
-        config={gameConfig}
-        onBack={() => setGameCode('')}
+        gameId={gameId}
+        onExit={() => {
+          setGameCode('');
+          setGameId(null);
+          setGameConfig(null);
+          setSearchParams({});
+        }}
       />
     );
   }

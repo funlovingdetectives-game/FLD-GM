@@ -8,7 +8,6 @@ import { TeamView } from './components/TeamView';
 import { LoadGameView } from './components/LoadGameView';
 import { QuizEditorView } from './components/QuizEditorView';
 import { ResultsView } from './components/ResultsView';
-import { IndividualQuizView } from './components/IndividualQuizView';
 import { initAudio, playRoundSound } from './utils/sound';
 import { useGame } from './hooks/useGame';
 import type { Branding, GameConfig, GameState, QuizQuestion } from './types/game';
@@ -151,7 +150,6 @@ export function GameApp() {
   const {
     config,
     branding,
-    gameCode,
     gameState,
     teamQuiz,
     individualQuiz,
@@ -347,7 +345,7 @@ export function GameApp() {
         individualSubmissions={individualSubmissions}
         gameId={currentGameId}
         onUpdateState={handleUpdateState}
-        onNavigateToResults={() => setView('results')}
+        onBack={() => setView('home')}
       />
     );
   }
@@ -355,7 +353,7 @@ export function GameApp() {
   if (view === 'branding') {
     return (
       <BrandingView
-        branding={localBranding}
+        initialBranding={localBranding}
         onSave={(newBranding) => {
           setLocalBranding(newBranding);
           localStorage.setItem('fld-branding', JSON.stringify(newBranding));
@@ -369,8 +367,8 @@ export function GameApp() {
   if (view === 'setup') {
     return (
       <SetupView
-        config={localConfig}
         branding={localBranding}
+        initialConfig={localConfig}
         onSave={async (newConfig) => {
           console.log('💾 === SAVE GAME START ===');
           console.log('Current game ID:', currentGameId);
@@ -447,7 +445,7 @@ export function GameApp() {
             alert('✓ Configuratie opgeslagen in database!');
             setView('home');
             loadSavedGames();
-          } catch (error) {
+          } catch (error: any) {
             console.error('Error saving config:', error);
             console.error('Error details:', {
               message: error?.message,
@@ -633,7 +631,7 @@ export function GameApp() {
     return (
       <LoadGameView
         branding={localBranding}
-        onSelectGame={loadGame}
+        onLoadGame={loadGame}
         onBack={() => setView('home')}
       />
     );
@@ -642,8 +640,8 @@ export function GameApp() {
   if (view === 'team') {
     return (
       <TeamView
-        branding={localBranding}
-        gameId={currentGameId}
+        gameId={currentGameId || undefined}
+        onExit={() => setView('home')}
       />
     );
   }
