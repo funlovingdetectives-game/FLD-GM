@@ -73,33 +73,52 @@ export function GameApp() {
       .single();
 
     if (game) {
-      setLocalConfig(game.config as GameConfig);
+      const loadedConfig = game.config as GameConfig;
+      
+      // Load quizzes into config
+      const { data: teamQuizData } = await supabase
+        .from('team_quizzes')
+        .select('questions')
+        .eq('game_id', currentGameId)
+        .maybeSingle();
+
+      const { data: individualQuizData } = await supabase
+        .from('individual_quizzes')
+        .select('questions')
+        .eq('game_id', currentGameId)
+        .maybeSingle();
+
+      loadedConfig.teamQuiz = teamQuizData?.questions as QuizQuestion[] || [];
+      loadedConfig.individualQuiz = individualQuizData?.questions as QuizQuestion[] || [];
+
+      setLocalConfig(loadedConfig);
       setLocalBranding(game.branding as Branding);
-      console.log('✅ Config and branding reloaded');
+      console.log('✅ Config and branding reloaded with', loadedConfig.teamQuiz.length, 'team questions and', loadedConfig.individualQuiz.length, 'individual questions');
     }
 
-    // Load team quiz
-    const { data: teamQuizData } = await supabase
+    // Also update local quiz states
+    const { data: teamQuizData2 } = await supabase
       .from('team_quizzes')
       .select('questions')
       .eq('game_id', currentGameId)
       .maybeSingle();
 
-    if (teamQuizData?.questions) {
-      setLocalTeamQuiz(teamQuizData.questions as QuizQuestion[]);
-      console.log('✅ Team quiz reloaded:', (teamQuizData.questions as QuizQuestion[]).length, 'questions');
+    if (teamQuizData2?.questions) {
+      setLocalTeamQuiz(teamQuizData2.questions as QuizQuestion[]);
+    } else {
+      setLocalTeamQuiz([]);
     }
 
-    // Load individual quiz
-    const { data: individualQuizData } = await supabase
+    const { data: individualQuizData2 } = await supabase
       .from('individual_quizzes')
       .select('questions')
       .eq('game_id', currentGameId)
       .maybeSingle();
 
-    if (individualQuizData?.questions) {
-      setLocalIndividualQuiz(individualQuizData.questions as QuizQuestion[]);
-      console.log('✅ Individual quiz reloaded:', (individualQuizData.questions as QuizQuestion[]).length, 'questions');
+    if (individualQuizData2?.questions) {
+      setLocalIndividualQuiz(individualQuizData2.questions as QuizQuestion[]);
+    } else {
+      setLocalIndividualQuiz([]);
     }
   };
 
