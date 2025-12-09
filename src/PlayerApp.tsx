@@ -24,7 +24,7 @@ export function PlayerApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 🔥 Load game on mount if code in URL
+  // Load game on mount if code in URL
   useEffect(() => {
     const codeFromUrl = searchParams.get('code');
     if (codeFromUrl) {
@@ -32,7 +32,7 @@ export function PlayerApp() {
     }
   }, []);
 
-  // 🔥 Also load when URL changes
+  // Also load when URL changes
   useEffect(() => {
     const codeFromUrl = searchParams.get('code');
     if (codeFromUrl && codeFromUrl !== gameCode) {
@@ -82,12 +82,13 @@ export function PlayerApp() {
     loadGameByCode(upperCode);
   }
 
-  // Show join screen if no code
+  // Show join screen if no code or error
   if (!gameCode || error) {
     return (
       <PlayerJoinView
         branding={branding}
         onJoinGame={handleJoinGame}
+        error={error} // 🔥 Pass error to view
       />
     );
   }

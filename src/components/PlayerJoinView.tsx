@@ -4,9 +4,10 @@ import type { Branding } from '../types/game';
 interface PlayerJoinViewProps {
   branding: Branding;
   onJoinGame: (gameCode: string) => void;
+  error?: string; // 🔥 NEW
 }
 
-export function PlayerJoinView({ branding, onJoinGame }: PlayerJoinViewProps) {
+export function PlayerJoinView({ branding, onJoinGame, error }: PlayerJoinViewProps) {
   const [gameCode, setGameCode] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -69,6 +70,26 @@ export function PlayerJoinView({ branding, onJoinGame }: PlayerJoinViewProps) {
         }}>
           Welkom! Voer de spelcode in om te beginnen
         </p>
+
+        {/* 🔥 ERROR MESSAGE */}
+        {error && (
+          <div style={{
+            backgroundColor: '#7f1d1d',
+            border: '2px solid #dc2626',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            color: '#fecaca'
+          }}>
+            <p style={{
+              fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+              fontWeight: 'bold',
+              margin: 0
+            }}>
+              ⚠️ {error}
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{
           backgroundColor: '#1f2937',
