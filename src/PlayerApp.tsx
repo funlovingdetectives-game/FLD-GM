@@ -24,11 +24,17 @@ export function PlayerApp() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  console.log('🔍 PlayerApp render:', { gameCode, gameId, loading, error });
-
+  // 🔥 Load game on mount if code in URL
   useEffect(() => {
     const codeFromUrl = searchParams.get('code');
-    console.log('🔍 URL code:', codeFromUrl);
+    if (codeFromUrl) {
+      loadGameByCode(codeFromUrl);
+    }
+  }, []);
+
+  // 🔥 Also load when URL changes
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code');
     if (codeFromUrl && codeFromUrl !== gameCode) {
       setGameCode(codeFromUrl);
       loadGameByCode(codeFromUrl);
@@ -38,7 +44,6 @@ export function PlayerApp() {
   async function loadGameByCode(code: string) {
     if (!code) return;
 
-    console.log('🔍 Loading game:', code);
     setLoading(true);
     setError('');
 
@@ -49,26 +54,22 @@ export function PlayerApp() {
         .eq('code', code)
         .maybeSingle();
 
-      console.log('🔍 Supabase response:', { data, fetchError });
-
       if (fetchError) {
-        console.error('❌ Supabase error:', fetchError);
+        console.error('Supabase error:', fetchError);
         setError('Er ging iets mis bij het laden van het spel');
         return;
       }
 
       if (!data) {
-        console.error('❌ Game not found');
         setError('Spelcode niet gevonden. Controleer de code en probeer opnieuw.');
         return;
       }
 
-      console.log('✅ Game loaded:', data.id);
       setGameId(data.id);
       setBranding(data.branding as Branding || defaultBranding);
       setSearchParams({ code });
-    } catch (err) {
-      console.error('❌ Error loading game:', err);
+    } catch (err: any) {
+      console.error('Error loading game:', err);
       setError('Er ging iets mis');
     } finally {
       setLoading(false);
@@ -81,16 +82,8 @@ export function PlayerApp() {
     loadGameByCode(upperCode);
   }
 
-  console.log('🔍 Render decision:', { 
-    showJoin: !gameCode || error,
-    showLoading: loading,
-    showGame: !!gameId,
-    willReturnNull: !gameCode && !error && !loading && !gameId
-  });
-
   // Show join screen if no code
   if (!gameCode || error) {
-    console.log('🎯 Showing PlayerJoinView');
     return (
       <PlayerJoinView
         branding={branding}
@@ -101,7 +94,6 @@ export function PlayerApp() {
 
   // Show loading
   if (loading) {
-    console.log('🎯 Showing loading');
     return (
       <div style={{
         minHeight: '100vh',
@@ -125,7 +117,6 @@ export function PlayerApp() {
 
   // Show game (TeamView for players)
   if (gameId) {
-    console.log('🎯 Showing TeamView');
     return (
       <TeamView
         gameId={gameId}
@@ -138,6 +129,5 @@ export function PlayerApp() {
     );
   }
 
-  console.log('❌ Returning null - this should not happen!');
   return null;
 }
