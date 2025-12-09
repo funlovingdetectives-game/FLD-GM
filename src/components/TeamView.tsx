@@ -58,10 +58,33 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
   useEffect(() => {
     if (gameId) {
       loadGame();
+      loadInitialGameState(); // 🔥 Load initial state
       subscribeToGameState();
       subscribeToSubmission();
     }
   }, [gameId]);
+
+  // 🔥 Load initial game_state (if exists)
+  async function loadInitialGameState() {
+    const { data } = await supabase
+      .from('game_state')
+      .select('*')
+      .eq('game_id', gameId)
+      .maybeSingle();
+
+    if (data) {
+      setQuizUnlocked(data.team_quiz_unlocked || false);
+      setTimeRemaining(data.time_remaining || 0);
+      setCurrentRound(data.current_round || 0);
+      setIsRunning(data.is_running || false);
+      setIsPaused(data.is_paused || false);
+      setPauseVideoUrl(data.pause_video_url || '');
+      setGameEnded(data.game_ended || false);
+      console.log('✅ Game state loaded:', data);
+    } else {
+      console.log('ℹ️ No game state yet - game not started');
+    }
+  }
 
   async function loadAvailableGames() {
     const { data } = await supabase
@@ -554,6 +577,68 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔥 Show waiting screen if game hasn't started yet
+  if (selectedTeam && !isRunning && !gameEnded) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1a1a1a, #000, #1a1a1a)',
+        padding: 'clamp(1rem, 3vw, 2rem)',
+        fontFamily: branding.bodyFont,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          maxWidth: '600px',
+          margin: '0 auto',
+          textAlign: 'center',
+          backgroundColor: '#1f2937',
+          borderRadius: '1rem',
+          padding: 'clamp(2rem, 5vw, 3rem)',
+          color: '#fff'
+        }}>
+          <Clock size={80} style={{ margin: '0 auto 1.5rem', color: branding.primaryColor }} />
+          <h1 style={{
+            fontSize: 'clamp(1.5rem, 4vw, 2.5rem)',
+            fontWeight: 'bold',
+            fontFamily: branding.headerFont,
+            marginBottom: '1rem',
+            color: branding.primaryColor
+          }}>
+            Wacht op start...
+          </h1>
+          <p style={{
+            fontSize: 'clamp(0.875rem, 2.5vw, 1.125rem)',
+            color: '#9ca3af',
+            marginBottom: '2rem',
+            lineHeight: '1.6'
+          }}>
+            Je bent ingelogd als <span style={{ fontWeight: 'bold', color: '#fff' }}>{selectedTeam.name}</span>.
+            <br />
+            Het spel wordt zo gestart door de spelleider.
+          </p>
+          <button
+            onClick={() => setSelectedTeam(null)}
+            style={{
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#374151',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: 'clamp(0.875rem, 2.5vw, 1rem)',
+              fontWeight: 'bold',
+              fontFamily: branding.headerFont
+            }}
+          >
+            ← Verander team
+          </button>
         </div>
       </div>
     );
