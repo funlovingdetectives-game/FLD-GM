@@ -1,3 +1,4 @@
+// Force new build hash - v2.1
 console.log('Build-time VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL);
 console.log('Build-time VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY);
 
