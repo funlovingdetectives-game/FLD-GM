@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { PlayerJoinView } from './components/PlayerJoinView';
 import { TeamView } from './components/TeamView';
-import type { Branding, GameConfig } from './types/game';
+import type { Branding } from './types/game';
 
 const defaultBranding: Branding = {
   logoUrl: '',
