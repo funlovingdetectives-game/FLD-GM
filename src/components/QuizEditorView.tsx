@@ -163,6 +163,7 @@ export function QuizEditorView({
   }
 
   function handleSave() {
+    console.log('💾 handleSave called with', questions.length, 'questions');
     const validQuestions = questions.filter(q =>
       q.question.trim() !== '' &&
       q.correctAnswer.trim() !== ''
@@ -173,7 +174,10 @@ export function QuizEditorView({
       return;
     }
 
+    console.log('✅ Calling onSave with', validQuestions.length, 'valid questions');
     onSave(validQuestions);
+    alert(`✅ ${validQuestions.length} ${validQuestions.length === 1 ? 'vraag' : 'vragen'} opgeslagen!`);
+    onBack(); // 🔥 Go back automatically
   }
 
   return (

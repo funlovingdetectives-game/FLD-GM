@@ -7,7 +7,7 @@ import { useTimer } from '../hooks/useTimer';
 interface SavedGame {
   id: string;
   name: string;
-  game_code: string;
+  code: string;
   created_at: string;
 }
 
@@ -66,7 +66,7 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
   async function loadAvailableGames() {
     const { data } = await supabase
       .from('games')
-      .select('id, name, game_code, created_at')
+      .select('id, name, code, created_at')
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -87,7 +87,7 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
     const { data } = await supabase
       .from('games')
       .select('id')
-      .eq('game_code', gameCode)
+      .eq('code', gameCode)
       .maybeSingle();
 
     if (data) {
@@ -413,7 +413,7 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
                           fontFamily: 'monospace',
                           color: branding.primaryColor
                         }}>
-                          {game.game_code}
+                          {game.code}
                         </span>
                       </div>
                       <p style={{

@@ -13,7 +13,7 @@ export interface Database {
         Row: {
           id: string;
           name: string;
-          game_code: string;
+          code: string;
           config: Json;
           branding: Json;
           created_at: string;
@@ -22,7 +22,7 @@ export interface Database {
         Insert: {
           id?: string;
           name: string;
-          game_code?: string;
+          code?: string;
           config?: Json;
           branding?: Json;
           created_at?: string;
@@ -31,7 +31,7 @@ export interface Database {
         Update: {
           id?: string;
           name?: string;
-          game_code?: string;
+          code?: string;
           config?: Json;
           branding?: Json;
           created_at?: string;

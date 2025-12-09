@@ -53,6 +53,57 @@ export function GameApp() {
   const [localTeamQuiz, setLocalTeamQuiz] = useState<QuizQuestion[]>([]);
   const [localIndividualQuiz, setLocalIndividualQuiz] = useState<QuizQuestion[]>([]);
 
+  // 🔥 NEW: Reload data from database when currentGameId changes
+  useEffect(() => {
+    if (currentGameId) {
+      reloadGameData();
+    }
+  }, [currentGameId]);
+
+  // 🔥 NEW: Function to reload all game data from database
+  const reloadGameData = async () => {
+    if (!currentGameId) return;
+
+    console.log('🔄 Reloading game data from database...');
+    
+    // Load game config and branding
+    const { data: game } = await supabase
+      .from('games')
+      .select('config, branding')
+      .eq('id', currentGameId)
+      .single();
+
+    if (game) {
+      setLocalConfig(game.config as GameConfig);
+      setLocalBranding(game.branding as Branding);
+      console.log('✅ Config and branding reloaded');
+    }
+
+    // Load team quiz
+    const { data: teamQuizData } = await supabase
+      .from('team_quizzes')
+      .select('questions')
+      .eq('game_id', currentGameId)
+      .maybeSingle();
+
+    if (teamQuizData?.questions) {
+      setLocalTeamQuiz(teamQuizData.questions as QuizQuestion[]);
+      console.log('✅ Team quiz reloaded:', (teamQuizData.questions as QuizQuestion[]).length, 'questions');
+    }
+
+    // Load individual quiz
+    const { data: individualQuizData } = await supabase
+      .from('individual_quizzes')
+      .select('questions')
+      .eq('game_id', currentGameId)
+      .maybeSingle();
+
+    if (individualQuizData?.questions) {
+      setLocalIndividualQuiz(individualQuizData.questions as QuizQuestion[]);
+      console.log('✅ Individual quiz reloaded:', (individualQuizData.questions as QuizQuestion[]).length, 'questions');
+    }
+  };
+
   const setView = (newView: string) => {
     console.log('setView called with:', newView);
     setViewState(newView);
@@ -70,6 +121,11 @@ export function GameApp() {
     const newUrl = params.toString() ? `?${params.toString()}` : '/';
     console.log('New URL:', newUrl);
     window.history.pushState({}, '', newUrl);
+    
+    // 🔥 NEW: Reload data when navigating back to setup or quiz views
+    if ((newView === 'setup' || newView === 'quiz-team' || newView === 'quiz-individual') && currentGameId) {
+      reloadGameData();
+    }
   };
 
   useEffect(() => {
@@ -138,14 +194,14 @@ export function GameApp() {
     if (!localConfig) return;
 
     try {
-      const { data: gameCodeData } = await supabase.rpc('generate_game_code');
-      const gameCode = gameCodeData as string;
+      // Generate unique game code using timestamp
+      const gameCode = 'FLD-' + Date.now().toString(36).slice(-6).toUpperCase();
 
       const { data: game, error: gameError } = await supabase
         .from('games')
         .insert({
           name: localConfig.gameName,
-          game_code: gameCode,
+          code: gameCode,
           config: localConfig as never,
           branding: localBranding as never
         })
@@ -154,19 +210,23 @@ export function GameApp() {
 
       if (gameError) throw gameError;
 
-      await supabase.from('team_quizzes').insert({
-        game_id: game.id,
-        questions: localTeamQuiz as never
-      });
+      if (localTeamQuiz.length > 0) {
+        await supabase.from('team_quizzes').insert({
+          game_id: game.id,
+          questions: localTeamQuiz as never
+        });
+      }
 
-      await supabase.from('individual_quizzes').insert({
-        game_id: game.id,
-        questions: localIndividualQuiz as never
-      });
+      if (localIndividualQuiz.length > 0) {
+        await supabase.from('individual_quizzes').insert({
+          game_id: game.id,
+          questions: localIndividualQuiz as never
+        });
+      }
 
       await supabase.from('game_state').insert({
         game_id: game.id,
-        is_running: false,
+        is_running: true,
         current_round: 0,
         time_remaining: localConfig.stationDuration * 60,
         is_paused: false,
@@ -175,28 +235,29 @@ export function GameApp() {
         scores_revealed: false
       });
 
-      for (const team of localConfig.teams) {
-        await supabase.from('team_submissions').insert({
-          game_id: game.id,
-          team_id: team.id,
-          answers: [] as never,
-          score: 0,
-          submitted: false
-        });
-      }
-
       setCurrentGameId(game.id);
       setView('control');
-      playRoundSound();
+      loadSavedGames();
     } catch (error) {
       console.error('Error starting game:', error);
-      alert('Fout bij het starten van het spel');
+      alert('Error starting game');
     }
+  };
+
+  const loadGame = async (gameId: string) => {
+    setCurrentGameId(gameId);
+    await reloadGameData(); // 🔥 NEW: Reload before navigating
+    setView('control');
   };
 
   const exportGame = () => {
     const data = JSON.stringify(
-      { branding: localBranding, gameConfig: localConfig, exportedAt: new Date().toISOString() },
+      {
+        gameConfig: localConfig,
+        branding: localBranding,
+        teamQuiz: localTeamQuiz,
+        individualQuiz: localIndividualQuiz
+      },
       null,
       2
     );
@@ -220,6 +281,12 @@ export function GameApp() {
         }
         if (data.gameConfig) {
           setLocalConfig(data.gameConfig);
+        }
+        if (data.teamQuiz) {
+          setLocalTeamQuiz(data.teamQuiz);
+        }
+        if (data.individualQuiz) {
+          setLocalIndividualQuiz(data.individualQuiz);
         }
         alert('✓ Geïmporteerd!');
       } catch {
@@ -279,9 +346,22 @@ export function GameApp() {
         teamSubmissions={teamSubmissions}
         individualSubmissions={individualSubmissions}
         gameId={currentGameId}
-        gameCode={gameCode}
-        onBack={() => setView('home')}
         onUpdateState={handleUpdateState}
+        onNavigateToResults={() => setView('results')}
+      />
+    );
+  }
+
+  if (view === 'branding') {
+    return (
+      <BrandingView
+        branding={localBranding}
+        onSave={(newBranding) => {
+          setLocalBranding(newBranding);
+          localStorage.setItem('fld-branding', JSON.stringify(newBranding));
+          setView('home');
+        }}
+        onBack={() => setView('home')}
       />
     );
   }
@@ -289,55 +369,92 @@ export function GameApp() {
   if (view === 'setup') {
     return (
       <SetupView
+        config={localConfig}
         branding={localBranding}
-        initialConfig={localConfig}
-        onBack={() => setView('home')}
         onSave={async (newConfig) => {
+          console.log('💾 === SAVE GAME START ===');
+          console.log('Current game ID:', currentGameId);
+          console.log('New config:', {
+            gameName: newConfig.gameName,
+            teamsCount: newConfig.teams?.length,
+            teams: newConfig.teams,
+            stationsCount: newConfig.stations?.length,
+            stations: newConfig.stations
+          });
+          console.log('Local quiz counts:', {
+            teamQuiz: localTeamQuiz.length,
+            individualQuiz: localIndividualQuiz.length
+          });
+          
           try {
             let gameCode: string | undefined;
             if (!currentGameId) {
-              const { data: gameCodeData } = await supabase.rpc('generate_game_code');
-              gameCode = gameCodeData as string;
+              gameCode = 'FLD-' + Date.now().toString(36).slice(-6).toUpperCase();
+              console.log('Generated new game code:', gameCode);
+            } else {
+              console.log('Updating existing game, no new code');
             }
 
+            console.log('About to upsert to database...');
+            
             // Save to database
             const { data: game, error } = await supabase
               .from('games')
               .upsert({
                 id: currentGameId || undefined,
                 name: newConfig.gameName,
-                game_code: gameCode,
+                code: gameCode,
                 config: newConfig as never,
                 branding: localBranding as never
               })
               .select()
               .single();
 
-            if (error) throw error;
+            if (error) {
+              console.error('❌ Database error:', error);
+              throw error;
+            }
+            
+            console.log('✅ Game saved successfully!', {
+              gameId: game.id,
+              gameName: game.name,
+              gameCode: game.code
+            });
 
             // Save quiz questions if they exist
             if (localTeamQuiz.length > 0) {
+              console.log('Saving team quiz with', localTeamQuiz.length, 'questions');
               await supabase.from('team_quizzes').upsert({
                 game_id: game.id,
                 questions: localTeamQuiz as never
               });
+              console.log('✅ Team quiz saved');
             }
 
             if (localIndividualQuiz.length > 0) {
+              console.log('Saving individual quiz with', localIndividualQuiz.length, 'questions');
               await supabase.from('individual_quizzes').upsert({
                 game_id: game.id,
                 questions: localIndividualQuiz as never
               });
+              console.log('✅ Individual quiz saved');
             }
 
             setCurrentGameId(game.id);
             setLocalConfig(newConfig);
             localStorage.setItem('fld-game-config', JSON.stringify(newConfig));
+            console.log('💾 === SAVE COMPLETE ===');
             alert('✓ Configuratie opgeslagen in database!');
             setView('home');
             loadSavedGames();
           } catch (error) {
             console.error('Error saving config:', error);
+            console.error('Error details:', {
+              message: error?.message,
+              code: error?.code,
+              details: error?.details,
+              hint: error?.hint
+            });
             alert('❌ Fout bij opslaan naar database');
           }
         }}
@@ -408,10 +525,21 @@ export function GameApp() {
                 color: localBranding.primaryColor,
                 marginBottom: '0.5rem'
               }}>
-                Team Quiz
+                👥 Team Quiz
               </h2>
-              <p style={{ color: '#9ca3af', fontSize: '1rem' }}>
+              <p style={{
+                color: '#9ca3af',
+                fontSize: '0.875rem',
+                marginTop: '0.5rem'
+              }}>
                 {localTeamQuiz.length} vragen
+              </p>
+              <p style={{
+                color: '#d1d5db',
+                fontSize: '0.875rem',
+                marginTop: '0.5rem'
+              }}>
+                Klik om te bewerken
               </p>
             </button>
 
@@ -434,10 +562,21 @@ export function GameApp() {
                 color: localBranding.primaryColor,
                 marginBottom: '0.5rem'
               }}>
-                Individuele Quiz
+                👤 Individuele Quiz
               </h2>
-              <p style={{ color: '#9ca3af', fontSize: '1rem' }}>
+              <p style={{
+                color: '#9ca3af',
+                fontSize: '0.875rem',
+                marginTop: '0.5rem'
+              }}>
                 {localIndividualQuiz.length} vragen
+              </p>
+              <p style={{
+                color: '#d1d5db',
+                fontSize: '0.875rem',
+                marginTop: '0.5rem'
+              }}>
+                Klik om te bewerken
               </p>
             </button>
           </div>
@@ -449,29 +588,21 @@ export function GameApp() {
   if (view === 'quiz-team') {
     return (
       <QuizEditorView
-        branding={localBranding}
         quizType="team"
-        initialQuestions={localTeamQuiz}
-        onBack={() => setView('quiz-menu')}
-        onSave={async (questions) => {
-          try {
-            setLocalTeamQuiz(questions);
-
-            // Save to database if we have a game ID
-            if (currentGameId) {
-              await supabase.from('team_quizzes').upsert({
-                game_id: currentGameId,
-                questions: questions as never
-              });
-            }
-
-            alert(`✓ ${questions.length} team quiz vragen opgeslagen!`);
-            setView('quiz-menu');
-          } catch (error) {
-            console.error('Error saving team quiz:', error);
-            alert('❌ Fout bij opslaan team quiz');
+        initialQuestions={localTeamQuiz || []}
+        branding={localBranding}
+        onSave={(questions) => {
+          setLocalTeamQuiz(questions);
+          // 🔥 NEW: Auto-save to database immediately
+          if (currentGameId) {
+            supabase.from('team_quizzes').upsert({
+              game_id: currentGameId,
+              questions: questions as never
+            });
           }
         }}
+        onBack={() => setView('quiz-menu')}
+        
       />
     );
   }
@@ -479,44 +610,21 @@ export function GameApp() {
   if (view === 'quiz-individual') {
     return (
       <QuizEditorView
-        branding={localBranding}
         quizType="individual"
-        initialQuestions={localIndividualQuiz}
-        onBack={() => setView('quiz-menu')}
-        onSave={async (questions) => {
-          try {
-            setLocalIndividualQuiz(questions);
-
-            // Save to database if we have a game ID
-            if (currentGameId) {
-              await supabase.from('individual_quizzes').upsert({
-                game_id: currentGameId,
-                questions: questions as never
-              });
-            }
-
-            alert(`✓ ${questions.length} individuele quiz vragen opgeslagen!`);
-            setView('quiz-menu');
-          } catch (error) {
-            console.error('Error saving individual quiz:', error);
-            alert('❌ Fout bij opslaan individuele quiz');
+        initialQuestions={localIndividualQuiz || []}
+        branding={localBranding}
+        onSave={(questions) => {
+          setLocalIndividualQuiz(questions);
+          // 🔥 NEW: Auto-save to database immediately
+          if (currentGameId) {
+            supabase.from('individual_quizzes').upsert({
+              game_id: currentGameId,
+              questions: questions as never
+            });
           }
         }}
-      />
-    );
-  }
-
-  if (view === 'branding') {
-    return (
-      <BrandingView
-        initialBranding={localBranding}
-        onBack={() => setView('home')}
-        onSave={(newBranding) => {
-          setLocalBranding(newBranding);
-          localStorage.setItem('fld-branding', JSON.stringify(newBranding));
-          alert('✓ Branding opgeslagen!');
-          setView('home');
-        }}
+        onBack={() => setView('quiz-menu')}
+        
       />
     );
   }
@@ -525,57 +633,29 @@ export function GameApp() {
     return (
       <LoadGameView
         branding={localBranding}
+        onSelectGame={loadGame}
         onBack={() => setView('home')}
-        onLoadGame={async (gameId) => {
-          try {
-            // Load quiz questions from database
-            const { data: teamQuizData } = await supabase
-              .from('team_quizzes')
-              .select('questions')
-              .eq('game_id', gameId)
-              .maybeSingle();
-
-            const { data: individualQuizData } = await supabase
-              .from('individual_quizzes')
-              .select('questions')
-              .eq('game_id', gameId)
-              .maybeSingle();
-
-            if (teamQuizData) {
-              setLocalTeamQuiz(teamQuizData.questions as QuizQuestion[]);
-            }
-
-            if (individualQuizData) {
-              setLocalIndividualQuiz(individualQuizData.questions as QuizQuestion[]);
-            }
-
-            setCurrentGameId(gameId);
-            setView('control');
-          } catch (error) {
-            console.error('Error loading game:', error);
-            setCurrentGameId(gameId);
-            setView('control');
-          }
-        }}
       />
     );
   }
 
   if (view === 'team') {
-    console.log('TeamView rendering with gameId:', currentGameId);
     return (
       <TeamView
-        gameId={currentGameId || undefined}
-        onExit={() => setView('home')}
+        branding={localBranding}
+        gameId={currentGameId}
       />
     );
   }
-  if (view === 'individual') {
+
+  if (view === 'results') {
     return (
-      <IndividualQuizView
-        gameId={currentGameId || ''}
-        gameCode={gameCode || ''}
-        onExit={() => setView('home')}
+      <ResultsView
+        branding={localBranding}
+        config={config!}
+        teamSubmissions={teamSubmissions}
+        individualSubmissions={individualSubmissions}
+        onBack={() => setView('control')}
       />
     );
   }
@@ -585,28 +665,26 @@ export function GameApp() {
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1a1a1a, #000, #1a1a1a)',
-      color: '#fff',
-      padding: '2rem',
-      fontFamily: localBranding.bodyFont,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      color: '#fff',
+      textAlign: 'center',
+      padding: '2rem'
     }}>
-      <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: '2rem', marginBottom: '1rem', fontFamily: localBranding.headerFont, color: localBranding.primaryColor }}>
-          Deze view wordt binnenkort toegevoegd...
-          <br />
-          <small style={{ fontSize: '1rem', color: '#9ca3af' }}>Current view: {view}</small>
-        </h2>
+      <div>
+        <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Loading...</h1>
+        <p style={{ color: '#9ca3af', marginBottom: '2rem' }}>
+          View: {view} | Game ID: {currentGameId || 'none'}
+        </p>
         <button
           onClick={() => setView('home')}
           style={{
             backgroundColor: localBranding.primaryColor,
             color: localBranding.secondaryColor,
             padding: '1rem 2rem',
-            fontSize: '1.125rem',
+            fontSize: '1rem',
             fontWeight: 'bold',
-            fontFamily: localBranding.headerFont,
             borderRadius: '0.5rem',
             border: 'none',
             cursor: 'pointer'

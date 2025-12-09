@@ -49,7 +49,7 @@ export function useGame(gameId: string | null) {
       if (game) {
         setConfig(game.config as GameConfig);
         setBranding(game.branding as Branding);
-        setGameCode(game.game_code);
+        setGameCode(game.code);
       }
 
       const { data: state } = await supabase

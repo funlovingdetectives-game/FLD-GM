@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Bell, Clock, Play, Map } from 'lucide-react';
+import { Bell, Clock, Play, Map, Share2, ArrowLeft } from 'lucide-react';
+import { ShareGameModal } from './ShareGameModal';
 import type { Branding, GameConfig, GameState } from '../types/game';
 
 interface ControlViewProps {
@@ -29,6 +30,9 @@ export function ControlView({
   onBack, 
   onUpdateState 
 }: ControlViewProps) {
+  const [showShareModal, setShowShareModal] = useState(false);
+  const gameCode = _gameCode || 'FLD-' + gameId.slice(0, 6).toUpperCase();
+
   // Safety checks
   if (!config || !config.stations || !config.teams) {
     return (
@@ -120,6 +124,26 @@ export function ControlView({
     
     onUpdateState({
       currentRound: nextRoundNum,
+      timeRemaining: duration * 60,
+      isPaused: willBePause
+    });
+  };
+
+  const previousRound = () => {
+    if (gameState.currentRound <= 0) {
+      alert('Eerste ronde bereikt!');
+      return;
+    }
+
+    const prevRoundNum = gameState.currentRound - 1;
+    const willBePause = prevRoundNum === pauseIndex;
+    const duration = willBePause ? config.pauseDuration : config.stationDuration;
+    
+    setTimeRemaining(duration * 60);
+    setIsRunning(false);
+    
+    onUpdateState({
+      currentRound: prevRoundNum,
       timeRemaining: duration * 60,
       isPaused: willBePause
     });
@@ -227,6 +251,32 @@ export function ControlView({
       >
         ← Home
       </button>
+
+      {/* Share Game Button */}
+      {gameCode && (
+        <button
+          onClick={() => setShowShareModal(true)}
+          style={{
+            backgroundColor: branding.primaryColor,
+            color: branding.secondaryColor,
+            padding: 'clamp(0.75rem, 2vw, 1rem) clamp(1rem, 3vw, 1.5rem)',
+            fontSize: 'clamp(0.875rem, 2vw, 1rem)',
+            fontWeight: 'bold',
+            fontFamily: branding.headerFont,
+            borderRadius: '0.75rem',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '1.5rem',
+            width: '100%',
+            justifyContent: 'center'
+          }}
+        >
+          <Share2 size={20} /> DEEL SPEL MET SPELERS
+        </button>
+      )}
 
       {/* Game Info Header */}
       <div style={{
@@ -357,29 +407,57 @@ export function ControlView({
           </button>
         </div>
 
-        <button
-          onClick={nextRound}
-          disabled={gameState.currentRound >= totalRounds - 1}
-          style={{
-            backgroundColor: gameState.currentRound >= totalRounds - 1 ? '#4B5563' : branding.primaryColor,
-            color: gameState.currentRound >= totalRounds - 1 ? '#9ca3af' : branding.secondaryColor,
-            padding: 'clamp(1rem, 3vw, 1.5rem)',
-            fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
-            fontWeight: 'bold',
-            fontFamily: branding.headerFont,
-            borderRadius: '0.5rem',
-            border: 'none',
-            cursor: gameState.currentRound >= totalRounds - 1 ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.75rem',
-            width: '100%',
-            opacity: gameState.currentRound >= totalRounds - 1 ? 0.5 : 1
-          }}
-        >
-          <Bell size={24} /> VOLGENDE RONDE
-        </button>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '0.75rem'
+        }}>
+          <button
+            onClick={previousRound}
+            disabled={gameState.currentRound <= 0}
+            style={{
+              backgroundColor: gameState.currentRound <= 0 ? '#4B5563' : '#6366f1',
+              color: gameState.currentRound <= 0 ? '#9ca3af' : '#fff',
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
+              fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+              fontWeight: 'bold',
+              fontFamily: branding.headerFont,
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: gameState.currentRound <= 0 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              opacity: gameState.currentRound <= 0 ? 0.5 : 1
+            }}
+          >
+            <ArrowLeft size={24} /> VORIGE
+          </button>
+
+          <button
+            onClick={nextRound}
+            disabled={gameState.currentRound >= totalRounds - 1}
+            style={{
+              backgroundColor: gameState.currentRound >= totalRounds - 1 ? '#4B5563' : branding.primaryColor,
+              color: gameState.currentRound >= totalRounds - 1 ? '#9ca3af' : branding.secondaryColor,
+              padding: 'clamp(1rem, 3vw, 1.5rem)',
+              fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+              fontWeight: 'bold',
+              fontFamily: branding.headerFont,
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: gameState.currentRound >= totalRounds - 1 ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.75rem',
+              opacity: gameState.currentRound >= totalRounds - 1 ? 0.5 : 1
+            }}
+          >
+            <Bell size={24} /> VOLGENDE
+          </button>
+        </div>
       </div>
 
       {/* Quiz Controls */}
@@ -782,6 +860,15 @@ export function ControlView({
           </div>
         )}
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && gameCode && (
+        <ShareGameModal 
+          gameCode={gameCode}
+          branding={branding}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </div>
   );
 }
