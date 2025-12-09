@@ -1,6 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { GameApp } from './GameApp'
 import { PlayerApp } from './PlayerApp'
+import { VERSION } from './version'
+
+console.log('App version:', VERSION);
 
 function App() {
   return (
