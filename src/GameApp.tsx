@@ -112,7 +112,7 @@ export function GameApp() {
     } else {
       params.delete('view');
     }
-    if (currentGameId && (newView === 'control' || newView === 'team')) {
+    if (currentGameId && (newView === 'control' || newView === 'team' || newView === 'setup' || newView === 'quiz-menu' || newView === 'quiz-team' || newView === 'quiz-individual')) {
       params.set('game', currentGameId);
     } else if (newView === 'team') {
       params.delete('game');
@@ -307,13 +307,55 @@ export function GameApp() {
     await updateGameState(updates);
   };
 
+  // 🔥 NEW: Create game in DB immediately when clicking "NEW GAME"
+  const createNewGame = async () => {
+    try {
+      const gameCode = 'FLD-' + Date.now().toString(36).slice(-6).toUpperCase();
+      
+      const { data: game, error } = await supabase
+        .from('games')
+        .insert({
+          name: 'Nieuw Spel',
+          code: gameCode,
+          config: {
+            gameName: '',
+            numStations: 8,
+            numTeams: 5,
+            stationDuration: 15,
+            pauseDuration: 15,
+            pauseAfterRound: 4,
+            stations: [],
+            teams: [],
+            routes: {}
+          },
+          branding: localBranding
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCurrentGameId(game.id);
+      setView('setup');
+    } catch (error) {
+      console.error('Error creating game:', error);
+      alert('Fout bij aanmaken spel');
+    }
+  };
+
   if (view === 'home') {
     return (
       <HomeView
         branding={localBranding}
         gameConfig={localConfig}
         savedGamesCount={savedGamesCount}
-        onNavigate={setView}
+        onNavigate={(v) => {
+          if (v === 'setup') {
+            createNewGame(); // Create game first!
+          } else {
+            setView(v);
+          }
+        }}
         onStartGame={startGame}
         onExport={exportGame}
         onImport={importGame}
