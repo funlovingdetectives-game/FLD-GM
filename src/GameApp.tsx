@@ -244,8 +244,8 @@ export function GameApp() {
 
   const loadGame = async (gameId: string) => {
     setCurrentGameId(gameId);
-    await reloadGameData(); // 🔥 NEW: Reload before navigating
-    setView('control');
+    await reloadGameData(); // Reload before navigating
+    setView('setup'); // Go to setup to edit, not control
   };
 
   const exportGame = () => {
