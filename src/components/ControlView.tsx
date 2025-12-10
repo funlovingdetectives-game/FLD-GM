@@ -31,7 +31,8 @@ export function ControlView({
   onUpdateState 
 }: ControlViewProps) {
   const [showShareModal, setShowShareModal] = useState(false);
-  const gameCode = _gameCode || 'FLD-' + gameId.slice(0, 6).toUpperCase();
+  // Only use real code from database - no fake codes!
+  const gameCode = _gameCode;
 
   // Safety checks
   if (!config || !config.stations || !config.teams) {
