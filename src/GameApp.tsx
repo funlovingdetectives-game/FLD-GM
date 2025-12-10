@@ -296,7 +296,8 @@ export function GameApp() {
           initialConfig={localConfig}
           onBack={() => setView('home')}
           onSave={saveGame}
-          onNavigateToQuiz={() => setView('team-quiz')}
+          onNavigateToTeamQuiz={() => setView('team-quiz')}
+          onNavigateToIndividualQuiz={() => setView('individual-quiz')}
         />
         {saveMessage && (
           <SaveConfirmation

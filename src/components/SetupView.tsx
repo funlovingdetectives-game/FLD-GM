@@ -7,10 +7,11 @@ interface SetupViewProps {
   initialConfig: GameConfig | null;
   onBack: () => void;
   onSave: (config: GameConfig) => void | Promise<void>;
-  onNavigateToQuiz: () => void;
+  onNavigateToTeamQuiz: () => void;
+  onNavigateToIndividualQuiz: () => void;
 }
 
-export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateToQuiz }: SetupViewProps) {
+export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateToTeamQuiz, onNavigateToIndividualQuiz }: SetupViewProps) {
   const [config, setConfig] = useState<GameConfig>(initialConfig || {
     gameName: '',
     numStations: 8,
@@ -211,7 +212,7 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
         {/* Quiz Status */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
           <button
-            onClick={onNavigateToQuiz}
+            onClick={onNavigateToTeamQuiz}
             style={{
               backgroundColor: '#1f2937',
               borderRadius: '0.75rem',
@@ -242,7 +243,7 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
           </button>
 
           <button
-            onClick={onNavigateToQuiz}
+            onClick={onNavigateToIndividualQuiz}
             style={{
               backgroundColor: '#1f2937',
               borderRadius: '0.75rem',
