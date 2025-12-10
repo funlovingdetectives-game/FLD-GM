@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { PlayerJoinView } from './components/PlayerJoinView';
 import { TeamView } from './components/TeamView';
+import { IndividualQuizView } from './components/IndividualQuizView';
 import type { Branding } from './types/game';
 
 const defaultBranding: Branding = {
@@ -19,15 +20,29 @@ const defaultBranding: Branding = {
 export function PlayerApp() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [gameId, setGameId] = useState<string | null>(null);
+  const [teamId, setTeamId] = useState<string | null>(null);
+  const [isIndividualQuiz, setIsIndividualQuiz] = useState(false);
   const [branding, setBranding] = useState<Branding>(defaultBranding);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Load game on mount if code in URL
+  // Check for individual quiz route or team route
   useEffect(() => {
+    const gameParam = searchParams.get('game');
+    const teamParam = searchParams.get('team');
     const codeFromUrl = searchParams.get('code');
+
+    // Individual quiz route: /play?game=XXX&team=YYY
+    if (gameParam && teamParam) {
+      setGameId(gameParam);
+      setTeamId(teamParam);
+      setIsIndividualQuiz(true);
+      return;
+    }
+
+    // Team view route: /play?code=FLD-XXX
     if (codeFromUrl) {
-      loadGameByCode(codeFromUrl, true); // Pass true = silent fail
+      loadGameByCode(codeFromUrl, true); // silent fail on mount
     }
   }, []);
 
@@ -102,6 +117,16 @@ export function PlayerApp() {
           <p style={{ fontSize: '1.25rem', color: '#9ca3af' }}>Laden...</p>
         </div>
       </div>
+    );
+  }
+
+  // Show individual quiz
+  if (isIndividualQuiz && gameId && teamId) {
+    return (
+      <IndividualQuizView
+        gameId={gameId}
+        teamId={teamId}
+      />
     );
   }
 

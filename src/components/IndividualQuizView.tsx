@@ -1,33 +1,22 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import type { QuizQuestion, Branding, GameConfig } from '../types/game';
-import { Clock, Trophy, CheckCircle, ArrowLeft, Search } from 'lucide-react';
+import type { QuizQuestion, Branding } from '../types/game';
+import { User, CheckCircle, XCircle, Trophy, Lock } from 'lucide-react';
 
 interface IndividualQuizViewProps {
   gameId: string;
-  gameCode: string;
-  onExit: () => void;
-}
-
-interface PlayerOption {
-  name: string;
   teamId: string;
-  teamName: string;
 }
 
-export function IndividualQuizView({ gameId, gameCode, onExit }: IndividualQuizViewProps) {
-  const [config, setConfig] = useState<GameConfig | null>(null);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+export function IndividualQuizView({ gameId, teamId }: IndividualQuizViewProps) {
   const [playerName, setPlayerName] = useState('');
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchResults, setSearchResults] = useState<PlayerOption[]>([]);
+  const [hasJoined, setHasJoined] = useState(false);
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState<number | null>(null);
   const [quizUnlocked, setQuizUnlocked] = useState(false);
-  const [quizStarted, setQuizStarted] = useState(false);
+  const [teamName, setTeamName] = useState('');
   const [branding, setBranding] = useState<Branding>({
     headerFont: 'Arial Black, sans-serif',
     bodyFont: 'Arial, sans-serif',
@@ -39,67 +28,75 @@ export function IndividualQuizView({ gameId, gameCode, onExit }: IndividualQuizV
     customFontName: ''
   });
 
-  // Load game data
   useEffect(() => {
-    loadGameData();
+    loadGame();
     subscribeToGameState();
-  }, [gameId]);
+  }, []);
 
-  async function loadGameData() {
-    try {
-      // Load game config
-      const { data: game } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single();
+  useEffect(() => {
+    if (hasJoined && playerName) {
+      checkExistingSubmission();
+    }
+  }, [hasJoined, playerName]);
 
-      if (game) {
-        setConfig(game.config as GameConfig);
-        setBranding(game.branding as Branding);
+  async function loadGame() {
+    const { data: game } = await supabase
+      .from('games')
+      .select('*')
+      .eq('id', gameId)
+      .single();
+
+    if (game) {
+      setBranding(game.branding as Branding);
+      
+      const config = game.config as any;
+      const team = config.teams.find((t: any) => t.id === teamId);
+      if (team) {
+        setTeamName(team.name);
       }
 
-      // Load individual quiz questions
-      const { data: quizData } = await supabase
+      // Load quiz
+      const { data: quiz } = await supabase
         .from('individual_quizzes')
         .select('questions')
         .eq('game_id', gameId)
-        .single();
+        .maybeSingle();
 
-      if (quizData) {
-        const qs = quizData.questions as QuizQuestion[];
+      if (quiz?.questions) {
+        const qs = quiz.questions as QuizQuestion[];
         setQuestions(qs);
         setAnswers(new Array(qs.length).fill(''));
       }
 
-      // Check if quiz is unlocked
+      // Load game state
       const { data: state } = await supabase
         .from('game_state')
         .select('individual_quiz_unlocked')
         .eq('game_id', gameId)
-        .single();
+        .maybeSingle();
 
       if (state) {
         setQuizUnlocked(state.individual_quiz_unlocked || false);
       }
-    } catch (error) {
-      console.error('Error loading game:', error);
     }
   }
 
   function subscribeToGameState() {
     const channel = supabase
-      .channel(`individual_quiz_${gameId}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'game_state',
-        filter: `game_id=eq.${gameId}`
-      }, (payload) => {
-        if (payload.new && typeof payload.new === 'object' && 'individual_quiz_unlocked' in payload.new) {
-          setQuizUnlocked(payload.new.individual_quiz_unlocked || false);
+      .channel(`individual-game-state-${gameId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'game_state',
+          filter: `game_id=eq.${gameId}`,
+        },
+        (payload) => {
+          const state = payload.new as any;
+          setQuizUnlocked(state.individual_quiz_unlocked || false);
         }
-      })
+      )
       .subscribe();
 
     return () => {
@@ -107,123 +104,314 @@ export function IndividualQuizView({ gameId, gameCode, onExit }: IndividualQuizV
     };
   }
 
-  // Get all players from all teams
-  const allPlayers: PlayerOption[] = config
-    ? config.teams.flatMap(team =>
-        team.members.map(member => ({
-          name: member,
-          teamId: team.id,
-          teamName: team.name
-        }))
-      )
-    : [];
+  async function checkExistingSubmission() {
+    const { data: submission } = await supabase
+      .from('individual_submissions')
+      .select('*')
+      .eq('game_id', gameId)
+      .eq('team_id', teamId)
+      .eq('player_name', playerName)
+      .maybeSingle();
 
-  // Handle search
-  function handleSearch(value: string) {
-    setSearchQuery(value);
-    if (value.length > 0) {
-      const filtered = allPlayers.filter(p =>
-        p.name.toLowerCase().includes(value.toLowerCase())
-      );
-      setSearchResults(filtered);
-      setShowDropdown(true);
-    } else {
-      setShowDropdown(false);
-      setSearchResults([]);
-    }
-  }
-
-  // Select player
-  function selectPlayer(player: PlayerOption) {
-    setPlayerName(player.name);
-    setSelectedTeamId(player.teamId);
-    setSearchQuery(player.name);
-    setShowDropdown(false);
-  }
-
-  // Start quiz
-  function startQuiz() {
-    if (!playerName || !selectedTeamId) {
-      alert('Selecteer eerst je naam uit de lijst');
-      return;
-    }
-    setQuizStarted(true);
-  }
-
-  // Update answer
-  function updateAnswer(index: number, value: string) {
-    const newAnswers = [...answers];
-    newAnswers[index] = value;
-    setAnswers(newAnswers);
-  }
-
-  // Calculate score
-  function calculateScore() {
-    let totalScore = 0;
-    questions.forEach((q, i) => {
-      if (answers[i].toLowerCase().trim() === q.correctAnswer.toLowerCase().trim()) {
-        totalScore += q.points;
+    if (submission) {
+      setSubmitted(submission.submitted);
+      setScore(submission.score);
+      if (submission.answers) {
+        const answersArray = Object.values(submission.answers);
+        setAnswers(answersArray as string[]);
       }
-    });
-    return totalScore;
+    }
   }
 
-  // Submit quiz
+  async function handleJoin() {
+    if (!playerName.trim()) return;
+    setHasJoined(true);
+  }
+
   async function handleSubmit() {
-    if (!playerName || !selectedTeamId) {
-      alert('Naam of team niet gevonden');
-      return;
-    }
+    if (submitted) return;
 
-    const finalScore = calculateScore();
-    setScore(finalScore);
+    const answersObject: Record<string, string> = {};
+    questions.forEach((q, i) => {
+      answersObject[q.id] = answers[i] || '';
+    });
 
-    try {
+    // Check if submission exists
+    const { data: existing } = await supabase
+      .from('individual_submissions')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('team_id', teamId)
+      .eq('player_name', playerName)
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing
+      await supabase
+        .from('individual_submissions')
+        .update({
+          answers: answersObject as never,
+          submitted: true
+        })
+        .eq('id', existing.id);
+    } else {
+      // Create new
       await supabase
         .from('individual_submissions')
         .insert({
           game_id: gameId,
-          team_id: selectedTeamId,
+          team_id: teamId,
           player_name: playerName,
-          answers: answers as any,
-          score: finalScore,
-          submitted_at: new Date().toISOString()
+          answers: answersObject as never,
+          score: 0,
+          submitted: true
         });
-
-      setSubmitted(true);
-    } catch (error) {
-      console.error('Error submitting:', error);
-      alert('Fout bij indienen. Probeer opnieuw.');
     }
+
+    setSubmitted(true);
   }
 
-  if (!config) {
+  // JOIN SCREEN
+  if (!hasJoined) {
     return (
       <div style={{
         minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         background: 'linear-gradient(135deg, #1a1a1a, #000, #1a1a1a)',
         color: '#fff',
-        padding: '2rem'
+        padding: '2rem',
+        fontFamily: branding.bodyFont,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        <div style={{ textAlign: 'center' }}>
+        {branding.customFontUrl && (
+          <style>{`@font-face { font-family: '${branding.customFontName}'; src: url('${branding.customFontUrl}'); }`}</style>
+        )}
+
+        <div style={{
+          maxWidth: '500px',
+          width: '100%'
+        }}>
+          {branding.logoUrl && (
+            <img
+              src={branding.logoUrl}
+              alt={branding.companyName}
+              style={{
+                maxHeight: '6rem',
+                maxWidth: '90%',
+                margin: '0 auto 2rem',
+                display: 'block',
+                objectFit: 'contain'
+              }}
+            />
+          )}
+
           <div style={{
-            width: '50px',
-            height: '50px',
-            border: '4px solid ' + branding.primaryColor,
-            borderTopColor: 'transparent',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
-            margin: '0 auto 1rem'
-          }} />
-          <p>Laden...</p>
+            backgroundColor: '#1f2937',
+            borderRadius: '1rem',
+            padding: '2rem',
+            border: `3px solid ${branding.primaryColor}`
+          }}>
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '2rem'
+            }}>
+              <User size={64} style={{ color: branding.primaryColor, margin: '0 auto 1rem' }} />
+              <h1 style={{
+                fontSize: '2rem',
+                fontWeight: 'bold',
+                fontFamily: branding.headerFont,
+                color: branding.primaryColor,
+                marginBottom: '0.5rem'
+              }}>
+                Individuele Quiz
+              </h1>
+              <p style={{
+                fontSize: '1rem',
+                color: '#9ca3af'
+              }}>
+                Team: {teamName}
+              </p>
+            </div>
+
+            <label style={{
+              display: 'block',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              color: '#d1d5db',
+              marginBottom: '0.5rem'
+            }}>
+              Jouw Naam
+            </label>
+            <input
+              type="text"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              placeholder="Voer je naam in..."
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '1rem',
+                backgroundColor: '#374151',
+                color: '#fff',
+                border: '2px solid #4B5563',
+                borderRadius: '0.5rem',
+                marginBottom: '1.5rem'
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && handleJoin()}
+            />
+
+            <button
+              onClick={handleJoin}
+              disabled={!playerName.trim()}
+              style={{
+                width: '100%',
+                padding: '1rem',
+                fontSize: '1.25rem',
+                fontWeight: 'bold',
+                fontFamily: branding.headerFont,
+                backgroundColor: playerName.trim() ? branding.primaryColor : '#4B5563',
+                color: playerName.trim() ? branding.secondaryColor : '#9ca3af',
+                border: 'none',
+                borderRadius: '0.5rem',
+                cursor: playerName.trim() ? 'pointer' : 'not-allowed'
+              }}
+            >
+              Start Quiz
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
+  // QUIZ NOT UNLOCKED
+  if (!quizUnlocked) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1a1a1a, #000, #1a1a1a)',
+        color: '#fff',
+        padding: '2rem',
+        fontFamily: branding.bodyFont,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          maxWidth: '500px',
+          width: '100%',
+          backgroundColor: '#1f2937',
+          borderRadius: '1rem',
+          padding: '3rem',
+          textAlign: 'center',
+          border: `3px solid ${branding.primaryColor}`
+        }}>
+          <Lock size={80} style={{ color: '#9ca3af', margin: '0 auto 1.5rem' }} />
+          <h2 style={{
+            fontSize: '1.75rem',
+            fontWeight: 'bold',
+            fontFamily: branding.headerFont,
+            color: branding.primaryColor,
+            marginBottom: '1rem'
+          }}>
+            Quiz Nog Niet Vrijgegeven
+          </h2>
+          <p style={{
+            fontSize: '1.125rem',
+            color: '#9ca3af',
+            marginBottom: '1rem'
+          }}>
+            Hoi {playerName}! De spelleider heeft de individuele quiz nog niet vrijgegeven.
+          </p>
+          <p style={{
+            fontSize: '1rem',
+            color: '#6b7280'
+          }}>
+            Deze pagina wordt automatisch bijgewerkt zodra de quiz beschikbaar is.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // SUBMITTED SCREEN
+  if (submitted) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #1a1a1a, #000, #1a1a1a)',
+        color: '#fff',
+        padding: '2rem',
+        fontFamily: branding.bodyFont,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          maxWidth: '500px',
+          width: '100%',
+          backgroundColor: '#1f2937',
+          borderRadius: '1rem',
+          padding: '3rem',
+          textAlign: 'center',
+          border: `3px solid ${branding.primaryColor}`
+        }}>
+          <CheckCircle size={80} style={{ color: '#22c55e', margin: '0 auto 1.5rem' }} />
+          <h2 style={{
+            fontSize: '2rem',
+            fontWeight: 'bold',
+            fontFamily: branding.headerFont,
+            color: branding.primaryColor,
+            marginBottom: '1rem'
+          }}>
+            Quiz Ingeleverd!
+          </h2>
+          <p style={{
+            fontSize: '1.25rem',
+            color: '#d1d5db',
+            marginBottom: '2rem'
+          }}>
+            Bedankt {playerName}!
+          </p>
+          {score !== null && (
+            <div style={{
+              padding: '1.5rem',
+              backgroundColor: branding.primaryColor,
+              borderRadius: '0.75rem',
+              marginBottom: '1rem'
+            }}>
+              <Trophy size={48} style={{ color: branding.secondaryColor, margin: '0 auto 1rem' }} />
+              <p style={{
+                fontSize: '1rem',
+                color: branding.secondaryColor,
+                marginBottom: '0.5rem'
+              }}>
+                Jouw Score
+              </p>
+              <p style={{
+                fontSize: '3rem',
+                fontWeight: 'bold',
+                fontFamily: branding.headerFont,
+                color: branding.secondaryColor
+              }}>
+                {score}
+              </p>
+            </div>
+          )}
+          <p style={{
+            fontSize: '0.875rem',
+            color: '#9ca3af'
+          }}>
+            Je kunt dit scherm nu sluiten
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // QUIZ SCREEN
   return (
     <div style={{
       minHeight: '100vh',
@@ -232,417 +420,168 @@ export function IndividualQuizView({ gameId, gameCode, onExit }: IndividualQuizV
       padding: '1rem',
       fontFamily: branding.bodyFont
     }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-        {/* Header */}
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto'
+      }}>
+        {/* HEADER */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '2rem',
-          padding: '1rem',
           backgroundColor: '#1f2937',
-          borderRadius: '0.75rem'
+          borderRadius: '1rem 1rem 0 0',
+          padding: '1.5rem',
+          borderBottom: `3px solid ${branding.primaryColor}`
         }}>
-          <button
-            onClick={onExit}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: '#374151',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '0.5rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            <ArrowLeft size={20} />
-            Terug
-          </button>
-
-          <div style={{ textAlign: 'center' }}>
-            <h1 style={{
-              fontSize: 'clamp(1.5rem, 4vw, 2rem)',
-              fontFamily: branding.headerFont,
-              color: branding.primaryColor,
-              margin: 0
-            }}>
-              Individuele Quiz
-            </h1>
-            <p style={{ fontSize: '0.875rem', color: '#9ca3af', margin: '0.25rem 0 0' }}>
-              Game: {gameCode}
-            </p>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem'
+          }}>
+            <div>
+              <h1 style={{
+                fontSize: '1.75rem',
+                fontWeight: 'bold',
+                fontFamily: branding.headerFont,
+                color: branding.primaryColor,
+                marginBottom: '0.25rem'
+              }}>
+                👤 Individuele Quiz
+              </h1>
+              <p style={{
+                fontSize: '1rem',
+                color: '#9ca3af'
+              }}>
+                {playerName} • Team {teamName}
+              </p>
+            </div>
           </div>
-
-          <div style={{ width: '100px' }} /> {/* Spacer */}
         </div>
 
-        {/* Main Content */}
-        {!quizUnlocked ? (
-          <div style={{
-            backgroundColor: '#1f2937',
-            borderRadius: '0.75rem',
-            padding: '3rem 2rem',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              width: '80px',
-              height: '80px',
-              margin: '0 auto 1.5rem',
-              borderRadius: '50%',
-              backgroundColor: '#374151',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Clock size={40} color={branding.primaryColor} />
-            </div>
-            <h2 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>
-              Quiz is nog vergrendeld
-            </h2>
-            <p style={{ color: '#9ca3af' }}>
-              De spelleider moet de individuele quiz vrijgeven voordat je kunt beginnen.
-            </p>
-          </div>
-        ) : !quizStarted ? (
-          <div style={{
-            backgroundColor: '#1f2937',
-            borderRadius: '0.75rem',
-            padding: '2rem'
-          }}>
-            <h2 style={{
-              fontSize: '1.5rem',
-              marginBottom: '1.5rem',
-              color: branding.primaryColor
-            }}>
-              Welkom bij de individuele quiz!
-            </h2>
-
-            <p style={{ marginBottom: '1.5rem', color: '#d1d5db' }}>
-              Zoek en selecteer je naam uit de lijst:
-            </p>
-
-            {/* Name Search */}
-            <div style={{ position: 'relative', marginBottom: '2rem' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.5rem',
+        {/* QUESTIONS */}
+        <div style={{
+          backgroundColor: '#1f2937',
+          padding: '2rem',
+          borderRadius: '0 0 1rem 1rem'
+        }}>
+          {questions.map((q, index) => (
+            <div
+              key={q.id}
+              style={{
+                backgroundColor: '#374151',
+                borderRadius: '0.75rem',
+                padding: '1.5rem',
+                marginBottom: '1.5rem'
+              }}
+            >
+              <p style={{
+                fontSize: '1.125rem',
                 fontWeight: 'bold',
-                color: branding.primaryColor
+                color: '#fff',
+                marginBottom: '1rem'
               }}>
-                Je naam:
-              </label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  onFocus={() => searchQuery.length > 0 && setShowDropdown(true)}
-                  placeholder="Begin te typen... (bijv. Linda)"
+                {index + 1}. {q.question}
+              </p>
+
+              {q.imageUrl && (
+                <img
+                  src={q.imageUrl}
+                  alt="Vraag afbeelding"
+                  style={{
+                    width: '100%',
+                    maxHeight: '300px',
+                    objectFit: 'contain',
+                    borderRadius: '0.5rem',
+                    marginBottom: '1rem',
+                    backgroundColor: '#4B5563'
+                  }}
+                />
+              )}
+
+              {q.type === 'multiple-choice' && q.options ? (
+                <div style={{ display: 'grid', gap: '0.5rem' }}>
+                  {q.options.map((option, i) => (
+                    <label
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '1rem',
+                        backgroundColor: answers[index] === option ? branding.primaryColor : '#4B5563',
+                        color: answers[index] === option ? branding.secondaryColor : '#fff',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s'
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name={`question-${index}`}
+                        value={option}
+                        checked={answers[index] === option}
+                        onChange={(e) => {
+                          const newAnswers = [...answers];
+                          newAnswers[index] = e.target.value;
+                          setAnswers(newAnswers);
+                        }}
+                        style={{ width: '1.25rem', height: '1.25rem' }}
+                      />
+                      <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>{option}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <textarea
+                  value={answers[index] || ''}
+                  onChange={(e) => {
+                    const newAnswers = [...answers];
+                    newAnswers[index] = e.target.value;
+                    setAnswers(newAnswers);
+                  }}
+                  placeholder="Jouw antwoord..."
+                  rows={3}
                   style={{
                     width: '100%',
                     padding: '1rem',
-                    paddingLeft: '3rem',
-                    fontSize: '1.125rem',
-                    backgroundColor: '#111827',
+                    fontSize: '1rem',
+                    backgroundColor: '#4B5563',
                     color: '#fff',
-                    border: '2px solid ' + (playerName ? branding.primaryColor : '#374151'),
+                    border: 'none',
                     borderRadius: '0.5rem',
-                    outline: 'none'
+                    resize: 'vertical',
+                    fontFamily: branding.bodyFont
                   }}
                 />
-                <Search
-                  size={20}
-                  style={{
-                    position: 'absolute',
-                    left: '1rem',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: '#9ca3af'
-                  }}
-                />
-              </div>
-
-              {/* Dropdown */}
-              {showDropdown && searchResults.length > 0 && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: '#1f2937',
-                  border: '2px solid ' + branding.primaryColor,
-                  borderRadius: '0.5rem',
-                  marginTop: '0.5rem',
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                  zIndex: 10,
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
-                }}>
-                  {searchResults.map((player, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => selectPlayer(player)}
-                      style={{
-                        padding: '1rem',
-                        cursor: 'pointer',
-                        borderBottom: idx < searchResults.length - 1 ? '1px solid #374151' : 'none',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#374151';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      <div style={{ fontSize: '1.125rem', fontWeight: 'bold' }}>
-                        {player.name}
-                      </div>
-                      <div style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
-                        {player.teamName}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {searchQuery.length > 0 && searchResults.length === 0 && (
-                <div style={{
-                  marginTop: '0.5rem',
-                  padding: '1rem',
-                  backgroundColor: '#374151',
-                  borderRadius: '0.5rem',
-                  color: '#9ca3af'
-                }}>
-                  Geen spelers gevonden met "{searchQuery}"
-                </div>
               )}
             </div>
+          ))}
 
-            {playerName && selectedTeamId && (
-              <div style={{
-                padding: '1rem',
-                backgroundColor: '#065f46',
-                borderRadius: '0.5rem',
-                marginBottom: '1.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <CheckCircle size={20} color="#10b981" />
-                <span>
-                  Geselecteerd: <strong>{playerName}</strong> ({config.teams.find(t => t.id === selectedTeamId)?.name})
-                </span>
-              </div>
-            )}
-
-            <button
-              onClick={startQuiz}
-              disabled={!playerName || !selectedTeamId}
-              style={{
-                width: '100%',
-                padding: '1.25rem',
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                backgroundColor: playerName && selectedTeamId ? branding.primaryColor : '#6b7280',
-                color: playerName && selectedTeamId ? branding.secondaryColor : '#9ca3af',
-                border: 'none',
-                borderRadius: '0.75rem',
-                cursor: playerName && selectedTeamId ? 'pointer' : 'not-allowed',
-                fontFamily: branding.headerFont
-              }}
-            >
-              Start Quiz
-            </button>
-          </div>
-        ) : submitted ? (
-          <div style={{
-            backgroundColor: '#1f2937',
-            borderRadius: '0.75rem',
-            padding: '3rem 2rem',
-            textAlign: 'center'
-          }}>
-            <div style={{
-              width: '100px',
-              height: '100px',
-              margin: '0 auto 1.5rem',
-              borderRadius: '50%',
-              backgroundColor: '#065f46',
+          <button
+            onClick={handleSubmit}
+            disabled={answers.some(a => !a)}
+            style={{
+              width: '100%',
+              padding: '1.5rem',
+              backgroundColor: answers.some(a => !a) ? '#4B5563' : branding.primaryColor,
+              color: answers.some(a => !a) ? '#9ca3af' : branding.secondaryColor,
+              fontSize: '1.5rem',
+              fontWeight: 'bold',
+              fontFamily: branding.headerFont,
+              borderRadius: '0.75rem',
+              border: 'none',
+              cursor: answers.some(a => !a) ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Trophy size={50} color={branding.primaryColor} />
-            </div>
-            <h2 style={{ fontSize: '2rem', marginBottom: '1rem', color: branding.primaryColor }}>
-              Ingeleverd!
-            </h2>
-            <p style={{ fontSize: '1.125rem', color: '#d1d5db', marginBottom: '1rem' }}>
-              {playerName}, je score:
-            </p>
-            <div style={{
-              fontSize: '3rem',
-              fontWeight: 'bold',
-              color: branding.primaryColor,
-              marginBottom: '2rem'
-            }}>
-              {score} punten
-            </div>
-            <button
-              onClick={onExit}
-              style={{
-                padding: '1rem 2rem',
-                fontSize: '1.125rem',
-                backgroundColor: '#374151',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '0.5rem',
-                cursor: 'pointer'
-              }}
-            >
-              Sluiten
-            </button>
-          </div>
-        ) : (
-          <div style={{
-            backgroundColor: '#1f2937',
-            borderRadius: '0.75rem',
-            padding: '2rem'
-          }}>
-            <div style={{
-              marginBottom: '2rem',
-              padding: '1rem',
-              backgroundColor: '#374151',
-              borderRadius: '0.5rem',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <strong>{playerName}</strong>
-                <span style={{ color: '#9ca3af', marginLeft: '0.5rem' }}>
-                  ({config.teams.find(t => t.id === selectedTeamId)?.name})
-                </span>
-              </div>
-              <div style={{ color: branding.primaryColor, fontWeight: 'bold' }}>
-                {questions.length} vragen
-              </div>
-            </div>
-
-            {questions.map((question, index) => (
-              <div
-                key={question.id}
-                style={{
-                  marginBottom: '2rem',
-                  padding: '1.5rem',
-                  backgroundColor: '#374151',
-                  borderRadius: '0.75rem'
-                }}
-              >
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  marginBottom: '1rem',
-                  color: branding.primaryColor
-                }}>
-                  Vraag {index + 1} ({question.points} punten)
-                </h3>
-
-                {question.imageUrl && (
-                  <img
-                    src={question.imageUrl}
-                    alt="Quiz afbeelding"
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '300px',
-                      borderRadius: '0.5rem',
-                      marginBottom: '1rem'
-                    }}
-                  />
-                )}
-
-                <p style={{ fontSize: '1.125rem', marginBottom: '1.5rem' }}>
-                  {question.question}
-                </p>
-
-                {question.type === 'multiple-choice' && question.options ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {question.options.map((option, oIdx) => (
-                      <label
-                        key={oIdx}
-                        style={{
-                          padding: '1rem',
-                          backgroundColor: answers[index] === option ? branding.primaryColor : '#1f2937',
-                          color: answers[index] === option ? branding.secondaryColor : '#fff',
-                          borderRadius: '0.5rem',
-                          cursor: 'pointer',
-                          border: '2px solid ' + (answers[index] === option ? branding.primaryColor : '#4b5563'),
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          fontSize: '1.125rem'
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name={`question-${index}`}
-                          value={option}
-                          checked={answers[index] === option}
-                          onChange={(e) => updateAnswer(index, e.target.value)}
-                          style={{ width: '20px', height: '20px' }}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                ) : (
-                  <input
-                    type="text"
-                    value={answers[index]}
-                    onChange={(e) => updateAnswer(index, e.target.value)}
-                    placeholder="Typ je antwoord..."
-                    style={{
-                      width: '100%',
-                      padding: '1rem',
-                      fontSize: '1.125rem',
-                      backgroundColor: '#1f2937',
-                      color: '#fff',
-                      border: '2px solid #4b5563',
-                      borderRadius: '0.5rem'
-                    }}
-                  />
-                )}
-              </div>
-            ))}
-
-            <button
-              onClick={handleSubmit}
-              disabled={answers.some(a => !a)}
-              style={{
-                width: '100%',
-                padding: '1.25rem',
-                fontSize: '1.25rem',
-                fontWeight: 'bold',
-                backgroundColor: answers.some(a => !a) ? '#6b7280' : branding.primaryColor,
-                color: answers.some(a => !a) ? '#9ca3af' : branding.secondaryColor,
-                border: 'none',
-                borderRadius: '0.75rem',
-                cursor: answers.some(a => !a) ? 'not-allowed' : 'pointer',
-                fontFamily: branding.headerFont
-              }}
-            >
-              {answers.some(a => !a) ? 'Beantwoord alle vragen' : 'Inleveren'}
-            </button>
-          </div>
-        )}
+              justifyContent: 'center',
+              gap: '0.75rem'
+            }}
+          >
+            <CheckCircle size={32} />
+            INLEVEREN
+          </button>
+        </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
