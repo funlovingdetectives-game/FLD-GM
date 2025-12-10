@@ -27,10 +27,13 @@ const defaultBranding: Branding = {
 const defaultConfig: GameConfig = {
   gameName: '',
   numTeams: 2,
+  numStations: 0,
+  stationDuration: 15,
+  pauseDuration: 5,
+  pauseAfterRound: 1,
   teams: [],
   stations: [],
-  routes: {},
-  stationDuration: 15
+  routes: {}
 };
 
 export function GameApp() {
@@ -225,10 +228,18 @@ export function GameApp() {
       <div>
         <HomeView
           branding={localBranding}
-          onNewGame={() => setShowCreateModal(true)}
-          onLoadGame={() => setView('load')}
-          onManageBranding={() => setView('branding')}
-          hasExistingGames={true}
+          gameConfig={localConfig}
+          savedGamesCount={0}
+          onNavigate={(view) => {
+            if (view === 'setup') {
+              setShowCreateModal(true);
+            } else {
+              setView(view);
+            }
+          }}
+          onStartGame={startGame}
+          onExport={() => {}}
+          onImport={() => {}}
         />
         {showCreateModal && (
           <CreateGameModal
@@ -256,8 +267,11 @@ export function GameApp() {
   if (view === 'branding') {
     return (
       <BrandingView
-        branding={localBranding}
-        onChange={setLocalBranding}
+        initialBranding={localBranding}
+        onSave={(newBranding) => {
+          setLocalBranding(newBranding);
+          setView('home');
+        }}
         onBack={() => setView('home')}
       />
     );
@@ -273,14 +287,14 @@ export function GameApp() {
           branding={localBranding}
         />
         <SetupView
-          config={localConfig}
           branding={localBranding}
-          onConfigChange={setLocalConfig}
-          onSave={saveGame}
-          onStartGame={startGame}
-          onEditTeamQuiz={() => setView('team-quiz')}
-          onEditIndividualQuiz={() => setView('individual-quiz')}
+          initialConfig={localConfig}
           onBack={() => setView('home')}
+          onSave={(newConfig) => {
+            setLocalConfig(newConfig);
+            saveGame();
+          }}
+          onNavigateToQuiz={() => setView('team-quiz')}
         />
         {saveMessage && (
           <SaveConfirmation
@@ -302,12 +316,14 @@ export function GameApp() {
           branding={localBranding}
         />
         <QuizEditorView
-          title="Team Quiz"
-          questions={localTeamQuiz}
-          onChange={setLocalTeamQuiz}
-          onSave={saveGame}
-          onBack={() => setView('setup')}
           branding={localBranding}
+          quizType="team"
+          initialQuestions={localTeamQuiz}
+          onSave={(questions) => {
+            setLocalTeamQuiz(questions);
+            saveGame();
+          }}
+          onBack={() => setView('setup')}
         />
         {saveMessage && (
           <SaveConfirmation
@@ -328,12 +344,14 @@ export function GameApp() {
           branding={localBranding}
         />
         <QuizEditorView
-          title="Persoonlijke Quiz"
-          questions={localIndividualQuiz}
-          onChange={setLocalIndividualQuiz}
-          onSave={saveGame}
-          onBack={() => setView('setup')}
           branding={localBranding}
+          quizType="individual"
+          initialQuestions={localIndividualQuiz}
+          onSave={(questions) => {
+            setLocalIndividualQuiz(questions);
+            saveGame();
+          }}
+          onBack={() => setView('setup')}
         />
         {saveMessage && (
           <SaveConfirmation
@@ -346,7 +364,7 @@ export function GameApp() {
   }
 
   // CONTROL VIEW
-  if (view === 'control' && currentGameId && gameCode) {
+  if (view === 'control' && currentGameId && gameCode && gameState) {
     return (
       <div>
         <GameHeader
