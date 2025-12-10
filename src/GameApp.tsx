@@ -136,15 +136,20 @@ export function GameApp() {
   };
 
   // SAVE CHANGES - update bestaand spel
-  const saveGame = async () => {
+  const saveGame = async (configToSave?: GameConfig) => {
     if (!currentGameId) return;
+    
+    const saveConfig = configToSave || localConfig;
+    if (configToSave) {
+      setLocalConfig(configToSave);
+    }
 
     try {
       await supabase
         .from('games')
         .update({
-          name: localConfig.gameName,
-          config: localConfig as never,
+          name: saveConfig.gameName,
+          config: saveConfig as never,
           branding: localBranding as never
         })
         .eq('id', currentGameId);
@@ -159,7 +164,7 @@ export function GameApp() {
         .update({ questions: localIndividualQuiz as never })
         .eq('game_id', currentGameId);
 
-      setSaveMessage(`✅ Spel '${localConfig.gameName}' (${gameCode}) opgeslagen`);
+      setSaveMessage(`✅ Spel '${saveConfig.gameName}' (${gameCode}) opgeslagen`);
     } catch (error) {
       console.error('Error saving game:', error);
       alert('Fout bij opslaan');
@@ -290,10 +295,7 @@ export function GameApp() {
           branding={localBranding}
           initialConfig={localConfig}
           onBack={() => setView('home')}
-          onSave={(newConfig: GameConfig) => {
-            setLocalConfig(newConfig);
-            saveGame();
-          }}
+          onSave={saveGame}
           onNavigateToQuiz={() => setView('team-quiz')}
         />
         {saveMessage && (
