@@ -4,10 +4,11 @@ import type { Branding } from '../types/game';
 interface PlayerJoinViewProps {
   branding: Branding;
   onJoinGame: (gameCode: string) => void;
-  error?: string; // 🔥 NEW
+  error?: string;
+  onCodeChange?: () => void; // 🔥 NEW - clear error when typing
 }
 
-export function PlayerJoinView({ branding, onJoinGame, error }: PlayerJoinViewProps) {
+export function PlayerJoinView({ branding, onJoinGame, error, onCodeChange }: PlayerJoinViewProps) {
   const [gameCode, setGameCode] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -112,7 +113,10 @@ export function PlayerJoinView({ branding, onJoinGame, error }: PlayerJoinViewPr
           <input
             type="text"
             value={gameCode}
-            onChange={(e) => setGameCode(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              setGameCode(e.target.value.toUpperCase());
+              onCodeChange?.(); // Clear error when typing
+            }}
             placeholder="FLD-XXX"
             maxLength={20}
             style={{

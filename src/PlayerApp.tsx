@@ -18,34 +18,28 @@ const defaultBranding: Branding = {
 
 export function PlayerApp() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [gameCode, setGameCode] = useState(searchParams.get('code') || '');
   const [gameId, setGameId] = useState<string | null>(null);
   const [branding, setBranding] = useState<Branding>(defaultBranding);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track if this is first load
 
   // Load game on mount if code in URL
   useEffect(() => {
     const codeFromUrl = searchParams.get('code');
     if (codeFromUrl) {
-      loadGameByCode(codeFromUrl);
+      loadGameByCode(codeFromUrl, true); // Pass true = silent fail
     }
+    setIsInitialLoad(false);
   }, []);
 
-  // Also load when URL changes
-  useEffect(() => {
-    const codeFromUrl = searchParams.get('code');
-    if (codeFromUrl && codeFromUrl !== gameCode) {
-      setGameCode(codeFromUrl);
-      loadGameByCode(codeFromUrl);
-    }
-  }, [searchParams]);
-
-  async function loadGameByCode(code: string) {
+  async function loadGameByCode(code: string, silentFail = false) {
     if (!code) return;
 
     setLoading(true);
-    setError('');
+    if (!silentFail) {
+      setError(''); // Only clear error if not silent
+    }
 
     try {
       const { data, error: fetchError } = await supabase
@@ -54,23 +48,32 @@ export function PlayerApp() {
         .eq('code', code)
         .maybeSingle();
 
-      if (fetchError) {
-        console.error('Supabase error:', fetchError);
-        setError('Er ging iets mis bij het laden van het spel');
+      if (fetchError || !data) {
+        console.error('Game not found:', code);
+        
+        if (!silentFail) {
+          // User submitted manually - show error
+          setError('Spelcode niet gevonden. Controleer de code en probeer opnieuw.');
+        } else {
+          // Initial URL load failed - just clear URL, no error
+          setSearchParams({});
+        }
         return;
       }
 
-      if (!data) {
-        setError('Spelcode niet gevonden. Controleer de code en probeer opnieuw.');
-        return;
-      }
-
+      // Success!
       setGameId(data.id);
       setBranding(data.branding as Branding || defaultBranding);
-      setSearchParams({ code });
+      setSearchParams({ code }); // Update URL
+      setError(''); // Clear any previous error
     } catch (err: any) {
       console.error('Error loading game:', err);
-      setError('Er ging iets mis');
+      
+      if (!silentFail) {
+        setError('Er ging iets mis bij het laden van het spel');
+      } else {
+        setSearchParams({});
+      }
     } finally {
       setLoading(false);
     }
@@ -78,19 +81,7 @@ export function PlayerApp() {
 
   function handleJoinGame(code: string) {
     const upperCode = code.toUpperCase().trim();
-    setGameCode(upperCode);
-    loadGameByCode(upperCode);
-  }
-
-  // Show join screen if no code or error
-  if (!gameCode || error) {
-    return (
-      <PlayerJoinView
-        branding={branding}
-        onJoinGame={handleJoinGame}
-        error={error} // 🔥 Pass error to view
-      />
-    );
+    loadGameByCode(upperCode, false); // false = show errors
   }
 
   // Show loading
@@ -116,13 +107,12 @@ export function PlayerApp() {
     );
   }
 
-  // Show game (TeamView for players)
+  // Show game (TeamView)
   if (gameId) {
     return (
       <TeamView
         gameId={gameId}
         onExit={() => {
-          setGameCode('');
           setGameId(null);
           setSearchParams({});
         }}
@@ -130,5 +120,13 @@ export function PlayerApp() {
     );
   }
 
-  return null;
+  // Show join screen (no game loaded yet, or after error)
+  return (
+    <PlayerJoinView
+      branding={branding}
+      onJoinGame={handleJoinGame}
+      error={error}
+      onCodeChange={() => setError('')}
+    />
+  );
 }
