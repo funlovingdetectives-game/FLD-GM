@@ -1,226 +1,173 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { ArrowLeft, Play, Trash2 } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import type { Branding } from '../types/game';
 
 interface SavedGame {
   id: string;
   name: string;
-  created_at: string;
+  code: string;
   config: any;
-  branding: any;
+  created_at: string;
 }
 
 interface LoadGameViewProps {
   branding: Branding;
-  onBack: () => void;
+  games: SavedGame[];
   onLoadGame: (gameId: string) => void;
+  onBack: () => void;
 }
 
-export function LoadGameView({ branding, onBack, onLoadGame }: LoadGameViewProps) {
-  const [games, setGames] = useState<SavedGame[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadGames();
-  }, []);
-
-  async function loadGames() {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('games')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setGames(data);
-    }
-    setLoading(false);
-  }
-
-  async function deleteGame(id: string) {
-    if (!confirm('Weet je zeker dat je dit spel wilt verwijderen?')) return;
-
-    const { error } = await supabase
-      .from('games')
-      .delete()
-      .eq('id', id);
-
-    if (!error) {
-      setGames(games.filter(g => g.id !== id));
-    }
-  }
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('nl-NL', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
+export function LoadGameView({ branding, games, onLoadGame, onBack }: LoadGameViewProps) {
   return (
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1a1a1a, #000, #1a1a1a)',
-      color: '#fff',
-      padding: '2rem',
+      padding: 'clamp(1rem, 3vw, 2rem)',
       fontFamily: branding.bodyFont
     }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <button
-          onClick={onBack}
-          style={{
-            backgroundColor: 'transparent',
-            color: branding.primaryColor,
-            border: `2px solid ${branding.primaryColor}`,
-            padding: '0.75rem 1.5rem',
-            fontSize: '1rem',
-            fontWeight: 'bold',
-            fontFamily: branding.headerFont,
-            borderRadius: '0.5rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '2rem',
-            transition: 'all 0.3s'
-          }}
-        >
-          <ArrowLeft size={20} /> Terug
-        </button>
-
-        <h1 style={{
-          fontSize: '2.5rem',
-          fontWeight: 900,
-          marginBottom: '0.5rem',
-          fontFamily: branding.headerFont,
-          color: branding.primaryColor
-        }}>
-          Opgeslagen Spellen
-        </h1>
-
-        <p style={{
-          fontSize: '1.125rem',
-          color: '#9ca3af',
+      <div style={{
+        maxWidth: '1200px',
+        margin: '0 auto'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
           marginBottom: '2rem'
         }}>
-          Hervat een eerder gestart spel
-        </p>
+          <button
+            onClick={onBack}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1rem',
+              backgroundColor: '#374151',
+              color: branding.primaryColor,
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              fontFamily: branding.headerFont
+            }}
+          >
+            <ArrowLeft size={20} /> Terug
+          </button>
 
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <p style={{ color: '#9ca3af' }}>Laden...</p>
-          </div>
-        ) : games.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '3rem',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '1rem'
+          <h1 style={{
+            fontSize: 'clamp(1.75rem, 4vw, 2.5rem)',
+            fontWeight: 900,
+            fontFamily: branding.headerFont,
+            color: branding.primaryColor,
+            flex: 1
           }}>
-            <p style={{ color: '#9ca3af', fontSize: '1.125rem' }}>
-              Geen opgeslagen spellen gevonden
-            </p>
+            Laad Spel
+          </h1>
+        </div>
+
+        {games.length === 0 ? (
+          <div style={{
+            backgroundColor: '#1f2937',
+            borderRadius: '1rem',
+            padding: '3rem',
+            textAlign: 'center',
+            color: '#9ca3af'
+          }}>
+            <Search size={64} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+            <p style={{ fontSize: '1.25rem' }}>Geen opgeslagen spellen gevonden</p>
           </div>
         ) : (
           <div style={{
             display: 'grid',
-            gap: '1rem',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))'
+            gap: '1rem'
           }}>
-            {games.map(game => (
-              <div
-                key={game.id}
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  borderRadius: '1rem',
-                  padding: '1.5rem',
-                  border: '2px solid rgba(255, 255, 255, 0.1)',
-                  transition: 'all 0.3s'
-                }}
-              >
-                <h3 style={{
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                  fontFamily: branding.headerFont,
-                  color: branding.primaryColor,
-                  marginBottom: '0.5rem'
-                }}>
-                  {game.name}
-                </h3>
+            {games.map((game) => {
+              const teams = game.config?.teams?.length || 0;
+              const stations = game.config?.stations?.length || 0;
+              const date = new Date(game.created_at).toLocaleDateString('nl-NL', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+              });
 
-                <p style={{
-                  fontSize: '0.875rem',
-                  color: '#9ca3af',
-                  marginBottom: '1rem'
-                }}>
-                  {formatDate(game.created_at)}
-                </p>
-
-                <div style={{
-                  fontSize: '0.875rem',
-                  color: '#d1d5db',
-                  marginBottom: '1rem',
-                  lineHeight: '1.5'
-                }}>
-                  <p>Teams: {game.config?.teams?.length || 0}</p>
-                  <p>Stations: {game.config?.stations?.length || 0}</p>
-                </div>
-
-                <div style={{
-                  display: 'flex',
-                  gap: '0.5rem'
-                }}>
-                  <button
-                    onClick={() => onLoadGame(game.id)}
-                    style={{
-                      flex: 1,
-                      backgroundColor: branding.primaryColor,
-                      color: branding.secondaryColor,
-                      padding: '0.75rem',
-                      fontSize: '0.875rem',
+              return (
+                <button
+                  key={game.id}
+                  onClick={() => onLoadGame(game.id)}
+                  style={{
+                    backgroundColor: '#1f2937',
+                    borderRadius: '0.75rem',
+                    padding: '1.5rem',
+                    border: `2px solid ${branding.primaryColor}`,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 0.3s',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto auto auto auto',
+                    gap: '1.5rem',
+                    alignItems: 'center'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#374151';
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1f2937';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
+                >
+                  <div>
+                    <h3 style={{
+                      fontSize: '1.25rem',
                       fontWeight: 'bold',
-                      fontFamily: branding.headerFont,
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.5rem',
-                      transition: 'all 0.3s'
-                    }}
-                  >
-                    <Play size={16} /> HERVATTEN
-                  </button>
-
-                  <button
-                    onClick={() => deleteGame(game.id)}
-                    style={{
-                      backgroundColor: '#ef4444',
                       color: '#fff',
-                      padding: '0.75rem',
-                      fontSize: '0.875rem',
-                      fontWeight: 'bold',
                       fontFamily: branding.headerFont,
-                      borderRadius: '0.5rem',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.3s'
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
+                      marginBottom: '0.25rem'
+                    }}>
+                      {game.name}
+                    </h3>
+                    <p style={{
+                      fontSize: '0.875rem',
+                      color: '#9ca3af',
+                      fontFamily: 'monospace'
+                    }}>
+                      Code: <span style={{ color: branding.primaryColor, fontWeight: 'bold' }}>{game.code}</span>
+                    </p>
+                  </div>
+
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 'bold',
+                      color: branding.primaryColor
+                    }}>{teams}</div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#9ca3af'
+                    }}>Teams</div>
+                  </div>
+
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{
+                      fontSize: '1.5rem',
+                      fontWeight: 'bold',
+                      color: branding.primaryColor
+                    }}>{stations}</div>
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#9ca3af'
+                    }}>Stations</div>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{
+                      fontSize: '0.875rem',
+                      color: '#9ca3af'
+                    }}>{date}</div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
