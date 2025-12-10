@@ -6,7 +6,7 @@ interface SetupViewProps {
   branding: Branding;
   initialConfig: GameConfig | null;
   onBack: () => void;
-  onSave: (config: GameConfig) => void;
+  onSave: (config: GameConfig) => void | Promise<void>;
   onNavigateToQuiz: () => void;
 }
 
@@ -142,7 +142,7 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!config.gameName) {
       alert('Vul een spelnaam in!');
       return;
@@ -156,8 +156,8 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
       return;
     }
     
-    onSave(config);
-    alert('✓ Spel opgeslagen!');
+    await onSave(config);
+    onBack();
   };
 
   const getTeamRoute = (teamId: string): string[] => {
