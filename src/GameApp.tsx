@@ -290,7 +290,7 @@ export function GameApp() {
           branding={localBranding}
           initialConfig={localConfig}
           onBack={() => setView('home')}
-          onSave={(newConfig) => {
+          onSave={(newConfig: GameConfig) => {
             setLocalConfig(newConfig);
             saveGame();
           }}
