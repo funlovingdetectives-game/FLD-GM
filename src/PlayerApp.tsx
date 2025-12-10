@@ -22,7 +22,6 @@ export function PlayerApp() {
   const [branding, setBranding] = useState<Branding>(defaultBranding);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track if this is first load
 
   // Load game on mount if code in URL
   useEffect(() => {
@@ -30,7 +29,6 @@ export function PlayerApp() {
     if (codeFromUrl) {
       loadGameByCode(codeFromUrl, true); // Pass true = silent fail
     }
-    setIsInitialLoad(false);
   }, []);
 
   async function loadGameByCode(code: string, silentFail = false) {
