@@ -109,8 +109,21 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
 
   useEffect(() => {
     if (gameId) {
+      console.log('[TeamView] useEffect - gameId:', gameId);
       loadGame();
-      subscribeToGameState();
+      const cleanup = subscribeToGameState();
+      
+      // FALLBACK: Poll every 2 seconds if realtime doesn't work
+      console.log('[TeamView] Starting fallback polling');
+      const pollInterval = setInterval(() => {
+        loadGameState();
+      }, 2000);
+      
+      return () => {
+        console.log('[TeamView] Cleanup - stopping subscription and polling');
+        if (cleanup) cleanup();
+        clearInterval(pollInterval);
+      };
     }
   }, [gameId]);
 
@@ -152,25 +165,33 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
       setBranding(game.branding as Branding);
 
       // Load current game state
-      const { data: state } = await supabase
-        .from('game_state')
-        .select('*')
-        .eq('game_id', gameId)
-        .maybeSingle();
+      await loadGameState();
+    }
+  }
 
-      if (state) {
-        setIsRunning(state.is_running);
-        setCurrentRound(state.current_round);
-        setTimeRemaining(state.time_remaining);
-        setIsPaused(state.is_paused);
-        setTeamQuizUnlocked(state.team_quiz_unlocked);
-        setIndividualQuizUnlocked(state.individual_quiz_unlocked);
-        setGameEnded(state.game_ended);
-      }
+  async function loadGameState() {
+    if (!gameId) return;
+    
+    const { data: state } = await supabase
+      .from('game_state')
+      .select('*')
+      .eq('game_id', gameId)
+      .maybeSingle();
+
+    if (state) {
+      setIsRunning(state.is_running);
+      setCurrentRound(state.current_round);
+      setTimeRemaining(state.time_remaining);
+      setIsPaused(state.is_paused);
+      setTeamQuizUnlocked(state.team_quiz_unlocked);
+      setIndividualQuizUnlocked(state.individual_quiz_unlocked);
+      setGameEnded(state.game_ended);
     }
   }
 
   function subscribeToGameState() {
+    console.log('[TeamView] Setting up realtime subscription for gameId:', gameId);
+    
     const channel = supabase
       .channel(`game-state-${gameId}`)
       .on(
@@ -182,10 +203,18 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
           filter: `game_id=eq.${gameId}`,
         },
         (payload) => {
+          console.log('[TeamView] Received realtime update:', payload);
           const state = payload.new as any;
+          console.log('[TeamView] State values:', {
+            isRunning: state.is_running,
+            currentRound: state.current_round,
+            timeRemaining: state.time_remaining,
+            isPaused: state.is_paused
+          });
           
           // Check if round changed - reset check-in
           if (state.current_round !== currentRound) {
+            console.log('[TeamView] Round changed! Resetting check-in');
             setCheckedIn(false);
           }
           
@@ -198,9 +227,12 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
           setGameEnded(state.game_ended || false);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[TeamView] Subscription status:', status);
+      });
 
     return () => {
+      console.log('[TeamView] Cleaning up subscription');
       supabase.removeChannel(channel);
     };
   }
