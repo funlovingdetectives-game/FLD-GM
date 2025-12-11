@@ -131,14 +131,10 @@ export function PlayerApp() {
   }
 
   // Show game (TeamView)
-  if (gameId) {
+  if (gameId && !isIndividualQuiz) {
     return (
       <TeamView
         gameId={gameId}
-        onExit={() => {
-          setGameId(null);
-          setSearchParams({});
-        }}
       />
     );
   }

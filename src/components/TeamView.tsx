@@ -2,17 +2,16 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { QRCodeSVG } from 'qrcode.react';
 import { initAudio, playTimeUpSound } from '../utils/sound';
+import { ResultsView } from './ResultsView';
 import type { Team, QuizQuestion, Branding, Station, GameConfig } from '../types/game';
 import { Clock, Users, Trophy, Lock, Unlock, MapPin, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface TeamViewProps {
   gameId?: string;
-  onExit: () => void;
 }
 
-export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
+export function TeamView({ gameId: initialGameId }: TeamViewProps) {
   const [gameId, setGameId] = useState<string | null>(initialGameId || null);
-  const [gameCode, setGameCode] = useState('');
   
   // Game config
   const [config, setConfig] = useState<GameConfig | null>(null);
@@ -39,6 +38,10 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
   
   // Station check-in
   const [checkedIn, setCheckedIn] = useState(false);
+  
+  // Results data (for game ended)
+  const [allTeamSubmissions, setAllTeamSubmissions] = useState<Record<string, any>>({});
+  const [allIndividualSubmissions, setAllIndividualSubmissions] = useState<any[]>([]);
   
   // Branding
   const [branding, setBranding] = useState<Branding>({
@@ -70,6 +73,39 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
     }
     prevTimeRef.current = timeRemaining;
   }, [timeRemaining]);
+
+  // Load final results when game ends
+  useEffect(() => {
+    if (gameEnded && gameId) {
+      loadFinalResults();
+    }
+  }, [gameEnded, gameId]);
+
+  async function loadFinalResults() {
+    // Load team submissions
+    const { data: teamSubs } = await supabase
+      .from('team_submissions')
+      .select('*')
+      .eq('game_id', gameId);
+
+    if (teamSubs) {
+      const teamSubsMap: Record<string, any> = {};
+      teamSubs.forEach((sub: any) => {
+        teamSubsMap[sub.team_id] = sub;
+      });
+      setAllTeamSubmissions(teamSubsMap);
+    }
+
+    // Load individual submissions
+    const { data: indSubs } = await supabase
+      .from('individual_submissions')
+      .select('*')
+      .eq('game_id', gameId);
+
+    if (indSubs) {
+      setAllIndividualSubmissions(indSubs);
+    }
+  }
 
   useEffect(() => {
     if (gameId) {
@@ -114,7 +150,6 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
       setTeams(cfg.teams);
       setStations(cfg.stations);
       setBranding(game.branding as Branding);
-      setGameCode(game.code);
 
       // Load current game state
       const { data: state } = await supabase
@@ -450,6 +485,18 @@ export function TeamView({ gameId: initialGameId, onExit }: TeamViewProps) {
 
   const { station: currentStation, nextStation } = getCurrentStation();
   const individualQuizUrl = `${window.location.origin}/play/individual?game=${gameId}&team=${selectedTeam.id}`;
+
+  // GAME ENDED - SHOW RESULTS
+  if (gameEnded && config) {
+    return (
+      <ResultsView
+        branding={branding}
+        config={config}
+        teamSubmissions={allTeamSubmissions}
+        individualSubmissions={allIndividualSubmissions}
+      />
+    );
+  }
 
   // MAIN GAME VIEW
   return (

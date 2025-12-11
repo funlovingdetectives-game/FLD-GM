@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Clock, Play, Map, Share2, ArrowLeft } from 'lucide-react';
+import { Bell, Clock, Play, Map, Share2, ArrowLeft, Trophy } from 'lucide-react';
 import { ShareGameModal } from './ShareGameModal';
 import type { Branding, GameConfig, GameState } from '../types/game';
 
@@ -166,6 +166,15 @@ export function ControlView({
     onUpdateState({
       scoresRevealed: !gameState.scoresRevealed
     });
+  };
+
+  const endGame = () => {
+    if (confirm('Weet je zeker dat je het spel wilt beëindigen? Je gaat naar het scoreboard.')) {
+      onUpdateState({
+        gameEnded: true,
+        isRunning: false
+      });
+    }
   };
 
   const minutes = Math.floor(timeRemaining / 60);
@@ -459,6 +468,30 @@ export function ControlView({
             <Bell size={24} /> VOLGENDE
           </button>
         </div>
+
+        {/* End Game Button */}
+        <button
+          onClick={endGame}
+          style={{
+            backgroundColor: '#dc2626',
+            color: '#fff',
+            padding: 'clamp(1rem, 3vw, 1.5rem)',
+            fontSize: 'clamp(1rem, 2.5vw, 1.25rem)',
+            fontWeight: 'bold',
+            fontFamily: branding.headerFont,
+            borderRadius: '0.5rem',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.75rem',
+            marginTop: '0.75rem',
+            width: '100%'
+          }}
+        >
+          <Trophy size={24} /> BEËINDIG SPEL & TOON SCOREBOARD
+        </button>
       </div>
 
       {/* Quiz Controls */}

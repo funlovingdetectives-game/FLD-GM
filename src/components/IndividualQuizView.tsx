@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { QuizQuestion, Branding } from '../types/game';
-import { User, CheckCircle, XCircle, Trophy, Lock } from 'lucide-react';
+import { User, CheckCircle, Trophy, Lock } from 'lucide-react';
 
 interface IndividualQuizViewProps {
   gameId: string;

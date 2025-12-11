@@ -6,7 +6,7 @@ interface ResultsViewProps {
   config: GameConfig;
   teamSubmissions: Record<string, TeamSubmission>;
   individualSubmissions: IndividualSubmission[];
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export function ResultsView({
@@ -39,21 +39,23 @@ export function ResultsView({
         maxWidth: '1400px',
         margin: '0 auto'
       }}>
-        <button
-          onClick={onBack}
-          style={{
-            background: 'none',
-            border: 'none',
-            color: branding.primaryColor,
-            fontSize: 'clamp(1rem, 3vw, 1.25rem)',
-            fontFamily: branding.headerFont,
-            cursor: 'pointer',
-            marginBottom: '2rem',
-            padding: '0.5rem'
-          }}
-        >
-          ← Terug naar controle
-        </button>
+        {onBack && (
+          <button
+            onClick={onBack}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: branding.primaryColor,
+              fontSize: 'clamp(1rem, 3vw, 1.25rem)',
+              fontFamily: branding.headerFont,
+              cursor: 'pointer',
+              marginBottom: '2rem',
+              padding: '0.5rem'
+            }}
+          >
+            ← Terug naar controle
+          </button>
+        )}
 
         <div style={{
           textAlign: 'center',

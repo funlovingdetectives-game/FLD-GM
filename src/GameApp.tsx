@@ -6,6 +6,7 @@ import { SetupView } from './components/SetupView';
 import { BrandingView } from './components/BrandingView';
 import { LoadGameView } from './components/LoadGameView';
 import { QuizEditorView } from './components/QuizEditorView';
+import { ResultsView } from './components/ResultsView';
 import { CreateGameModal } from './components/CreateGameModal';
 import { SaveConfirmation } from './components/SaveConfirmation';
 import { GameHeader } from './components/GameHeader';
@@ -363,6 +364,19 @@ export function GameApp() {
           />
         )}
       </div>
+    );
+  }
+
+  // RESULTS VIEW (game ended)
+  if (view === 'control' && currentGameId && gameCode && gameState?.gameEnded) {
+    return (
+      <ResultsView
+        branding={localBranding}
+        config={localConfig}
+        teamSubmissions={teamSubmissions as any}
+        individualSubmissions={individualSubmissions}
+        onBack={() => setView('home')}
+      />
     );
   }
 
