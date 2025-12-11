@@ -340,6 +340,13 @@ export function GameApp() {
             if (!currentGameId) return;
             
             try {
+              // Update config with new quiz
+              const updatedConfig = {
+                ...localConfig,
+                teamQuiz: questions
+              };
+              setLocalConfig(updatedConfig);
+
               await supabase
                 .from('team_quizzes')
                 .update({ questions: questions as never })
@@ -348,8 +355,8 @@ export function GameApp() {
               await supabase
                 .from('games')
                 .update({
-                  name: localConfig.gameName,
-                  config: localConfig as never,
+                  name: updatedConfig.gameName,
+                  config: updatedConfig as never,
                   branding: localBranding as never
                 })
                 .eq('id', currentGameId);
@@ -390,6 +397,13 @@ export function GameApp() {
             if (!currentGameId) return;
             
             try {
+              // Update config with new quiz
+              const updatedConfig = {
+                ...localConfig,
+                individualQuiz: questions
+              };
+              setLocalConfig(updatedConfig);
+
               await supabase
                 .from('individual_quizzes')
                 .update({ questions: questions as never })
@@ -398,8 +412,8 @@ export function GameApp() {
               await supabase
                 .from('games')
                 .update({
-                  name: localConfig.gameName,
-                  config: localConfig as never,
+                  name: updatedConfig.gameName,
+                  config: updatedConfig as never,
                   branding: localBranding as never
                 })
                 .eq('id', currentGameId);
