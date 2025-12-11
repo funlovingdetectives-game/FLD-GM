@@ -26,6 +26,17 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
     individualQuiz: []
   });
 
+  // Save config then navigate to quiz (no validation needed, just save current state)
+  const handleNavigateToTeamQuiz = async () => {
+    await onSave(config);
+    onNavigateToTeamQuiz();
+  };
+
+  const handleNavigateToIndividualQuiz = async () => {
+    await onSave(config);
+    onNavigateToIndividualQuiz();
+  };
+
   const generateStations = () => {
     const stations: Station[] = [];
     for (let i = 0; i < config.numStations; i++) {
@@ -212,7 +223,7 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
         {/* Quiz Status */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
           <button
-            onClick={onNavigateToTeamQuiz}
+            onClick={handleNavigateToTeamQuiz}
             style={{
               backgroundColor: '#1f2937',
               borderRadius: '0.75rem',
@@ -243,7 +254,7 @@ export function SetupView({ branding, initialConfig, onBack, onSave, onNavigateT
           </button>
 
           <button
-            onClick={onNavigateToIndividualQuiz}
+            onClick={handleNavigateToIndividualQuiz}
             style={{
               backgroundColor: '#1f2937',
               borderRadius: '0.75rem',
