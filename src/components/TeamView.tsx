@@ -536,7 +536,7 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
     );
   }
 
-  const { station: currentStation, nextStation } = getCurrentStation();
+  const { station: currentStation } = getCurrentStation();
   const individualQuizUrl = `${window.location.origin}/play/individual?game=${gameId}&team=${selectedTeam.id}`;
 
   // GAME ENDED - SHOW RESULTS
