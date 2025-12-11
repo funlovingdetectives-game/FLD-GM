@@ -39,6 +39,59 @@ export function IndividualQuizView({ gameId, teamId }: IndividualQuizViewProps) 
     }
   }, [hasJoined, playerName]);
 
+  // AUTO-SAVE DRAFT (debounced - 2 seconds after last change)
+  useEffect(() => {
+    if (!hasJoined || !playerName || submitted || questions.length === 0) return;
+
+    const timer = setTimeout(() => {
+      saveDraft();
+    }, 2000); // Wait 2 seconds after last change
+
+    return () => clearTimeout(timer);
+  }, [answers, hasJoined, playerName, submitted]);
+
+  async function saveDraft() {
+    // Only save if there's at least one answer
+    if (answers.every(a => !a)) return;
+
+    const answersObject: Record<string, string> = {};
+    questions.forEach((q, i) => {
+      answersObject[q.id] = answers[i] || '';
+    });
+
+    // Check if submission exists
+    const { data: existing } = await supabase
+      .from('individual_submissions')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('team_id', teamId)
+      .eq('player_name', playerName)
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing draft
+      await supabase
+        .from('individual_submissions')
+        .update({
+          answers: answersObject as never,
+          submitted: false // Still a draft!
+        })
+        .eq('id', existing.id);
+    } else {
+      // Create new draft
+      await supabase
+        .from('individual_submissions')
+        .insert({
+          game_id: gameId,
+          team_id: teamId,
+          player_name: playerName,
+          answers: answersObject as never,
+          score: 0,
+          submitted: false // Draft!
+        });
+    }
+  }
+
   async function loadGame() {
     const { data: game } = await supabase
       .from('games')

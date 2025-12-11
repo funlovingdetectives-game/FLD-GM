@@ -279,6 +279,59 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
+  // AUTO-SAVE TEAM QUIZ DRAFT (debounced - 2 seconds after last change)
+  useEffect(() => {
+    if (!selectedTeam || teamSubmitted || teamQuestions.length === 0) return;
+
+    const timer = setTimeout(() => {
+      saveTeamQuizDraft();
+    }, 2000); // Wait 2 seconds after last change
+
+    return () => clearTimeout(timer);
+  }, [teamAnswers, selectedTeam, teamSubmitted]);
+
+  async function saveTeamQuizDraft() {
+    if (!selectedTeam || teamSubmitted) return;
+    
+    // Only save if there's at least one answer
+    if (teamAnswers.every(a => !a)) return;
+
+    const answersObject: Record<string, string> = {};
+    teamQuestions.forEach((q, i) => {
+      answersObject[q.id] = teamAnswers[i] || '';
+    });
+
+    // Check if submission exists
+    const { data: existing } = await supabase
+      .from('team_submissions')
+      .select('id')
+      .eq('game_id', gameId)
+      .eq('team_id', selectedTeam.id)
+      .maybeSingle();
+
+    if (existing) {
+      // Update existing draft
+      await supabase
+        .from('team_submissions')
+        .update({
+          answers: answersObject as never,
+          submitted: false // Still a draft!
+        })
+        .eq('id', existing.id);
+    } else {
+      // Create new draft
+      await supabase
+        .from('team_submissions')
+        .insert({
+          game_id: gameId!,
+          team_id: selectedTeam.id,
+          answers: answersObject as never,
+          score: 0,
+          submitted: false // Draft!
+        });
+    }
+  }
+
   // Calculate current station
   function getCurrentStation(): { station: Station | null; nextStation: Station | null } {
     if (!selectedTeam || !config || stations.length === 0) {
