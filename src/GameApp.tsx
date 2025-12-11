@@ -54,6 +54,7 @@ export function GameApp() {
   const [localIndividualQuiz, setLocalIndividualQuiz] = useState<QuizQuestion[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [savedGamesCount, setSavedGamesCount] = useState(0);
 
   const {
     config,
@@ -82,7 +83,16 @@ export function GameApp() {
 
   useEffect(() => {
     initAudio();
+    loadSavedGamesCount();
   }, []);
+
+  async function loadSavedGamesCount() {
+    const { count } = await supabase
+      .from('games')
+      .select('*', { count: 'exact', head: true });
+    
+    setSavedGamesCount(count || 0);
+  }
 
   useEffect(() => {
     if (branding) setLocalBranding(branding);
@@ -129,6 +139,7 @@ export function GameApp() {
       setLocalConfig(newConfig);
       setShowCreateModal(false);
       setSaveMessage(`✅ Spel '${gameName}' (${gameCode}) aangemaakt`);
+      loadSavedGamesCount(); // Refresh count
       setView('setup');
     } catch (error) {
       console.error('Error creating game:', error);
@@ -235,7 +246,7 @@ export function GameApp() {
         <HomeView
           branding={localBranding}
           gameConfig={localConfig}
-          savedGamesCount={0}
+          savedGamesCount={savedGamesCount}
           onNavigate={(view) => {
             if (view === 'setup') {
               setShowCreateModal(true);
@@ -323,9 +334,31 @@ export function GameApp() {
           branding={localBranding}
           quizType="team"
           initialQuestions={localTeamQuiz}
-          onSave={(questions) => {
+          onSave={async (questions) => {
             setLocalTeamQuiz(questions);
-            saveGame();
+            // Save immediately with new questions
+            if (!currentGameId) return;
+            
+            try {
+              await supabase
+                .from('team_quizzes')
+                .update({ questions: questions as never })
+                .eq('game_id', currentGameId);
+
+              await supabase
+                .from('games')
+                .update({
+                  name: localConfig.gameName,
+                  config: localConfig as never,
+                  branding: localBranding as never
+                })
+                .eq('id', currentGameId);
+
+              setSaveMessage(`✅ Team Quiz (${questions.length} vragen) opgeslagen`);
+            } catch (error) {
+              console.error('Error saving team quiz:', error);
+              alert('Fout bij opslaan team quiz');
+            }
           }}
           onBack={() => setView('setup')}
         />
@@ -351,9 +384,31 @@ export function GameApp() {
           branding={localBranding}
           quizType="individual"
           initialQuestions={localIndividualQuiz}
-          onSave={(questions) => {
+          onSave={async (questions) => {
             setLocalIndividualQuiz(questions);
-            saveGame();
+            // Save immediately with new questions
+            if (!currentGameId) return;
+            
+            try {
+              await supabase
+                .from('individual_quizzes')
+                .update({ questions: questions as never })
+                .eq('game_id', currentGameId);
+
+              await supabase
+                .from('games')
+                .update({
+                  name: localConfig.gameName,
+                  config: localConfig as never,
+                  branding: localBranding as never
+                })
+                .eq('id', currentGameId);
+
+              setSaveMessage(`✅ Individuele Quiz (${questions.length} vragen) opgeslagen`);
+            } catch (error) {
+              console.error('Error saving individual quiz:', error);
+              alert('Fout bij opslaan individuele quiz');
+            }
           }}
           onBack={() => setView('setup')}
         />
