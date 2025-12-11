@@ -83,10 +83,18 @@ export function ControlView({
 
   // Timer effect
   useEffect(() => {
-    if (isRunning && timeRemaining > 0) {
+    if (isRunning) {
       const timer = setInterval(() => {
         setTimeRemaining(prev => {
-          const newTime = Math.max(0, prev - 1);
+          if (prev <= 0) {
+            setIsRunning(false); // Stop timer at 0
+            onUpdateState({ 
+              timeRemaining: 0,
+              isRunning: false 
+            });
+            return 0;
+          }
+          const newTime = prev - 1;
           onUpdateState({ timeRemaining: newTime });
           return newTime;
         });
@@ -94,14 +102,26 @@ export function ControlView({
 
       return () => clearInterval(timer);
     }
-  }, [isRunning, timeRemaining]);
+  }, [isRunning]); // Only isRunning dependency!
 
-  const startTimer = () => setIsRunning(true);
-  const pauseTimer = () => setIsRunning(false);
+  const startTimer = () => {
+    setIsRunning(true);
+    onUpdateState({ isRunning: true });
+  };
+  
+  const pauseTimer = () => {
+    setIsRunning(false);
+    onUpdateState({ isRunning: false });
+  };
+  
   const resetTimer = () => {
     const duration = isPause ? config.pauseDuration : config.stationDuration;
     setTimeRemaining(duration * 60);
-    onUpdateState({ timeRemaining: duration * 60 });
+    onUpdateState({ 
+      timeRemaining: duration * 60,
+      isRunning: false
+    });
+    setIsRunning(false);
   };
 
   const addTime = (minutes: number) => {
@@ -126,7 +146,8 @@ export function ControlView({
     onUpdateState({
       currentRound: nextRoundNum,
       timeRemaining: duration * 60,
-      isPaused: willBePause
+      isPaused: willBePause,
+      isRunning: false  // ← Stop timer bij volgende ronde!
     });
   };
 
@@ -146,7 +167,8 @@ export function ControlView({
     onUpdateState({
       currentRound: prevRoundNum,
       timeRemaining: duration * 60,
-      isPaused: willBePause
+      isPaused: willBePause,
+      isRunning: false  // ← Stop timer bij vorige ronde!
     });
   };
 

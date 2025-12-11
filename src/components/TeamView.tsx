@@ -734,13 +734,13 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
                   color: '#fff',
                   fontFamily: branding.headerFont
                 }}>
-                  {checkedIn ? currentStation.name : (nextStation?.name || currentStation.name)}
+                  {currentStation.name}
                 </p>
               </div>
             </div>
 
             {/* ROUTE IMAGE */}
-            {!checkedIn && nextStation?.mapUrl && (
+            {!checkedIn && currentStation.mapUrl && (
               <div style={{
                 marginBottom: '1.5rem',
                 borderRadius: '0.75rem',
@@ -748,7 +748,7 @@ export function TeamView({ gameId: initialGameId }: TeamViewProps) {
                 border: `3px solid ${branding.primaryColor}`
               }}>
                 <img
-                  src={nextStation.mapUrl}
+                  src={currentStation.mapUrl}
                   alt="Route naar station"
                   style={{
                     width: '100%',

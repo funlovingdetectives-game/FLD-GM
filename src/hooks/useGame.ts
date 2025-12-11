@@ -155,9 +155,23 @@ export function useGame(gameId: string | null) {
   };
 
   const updateGameState = async (updates: Partial<GameState>) => {
-    if (!gameId || !gameState) return;
+    if (!gameId) return;
 
-    const newState = { ...gameState, ...updates };
+    // Build complete state - use existing gameState or defaults
+    const currentState = gameState || {
+      isRunning: false,
+      currentRound: 0,
+      isPaused: false,
+      timeRemaining: 0,
+      teamQuizUnlocked: false,
+      individualQuizUnlocked: false,
+      personalQuizUnlocked: false,
+      scoresRevealed: false,
+      pauseVideoUrl: undefined,
+      gameEnded: false
+    };
+
+    const newState = { ...currentState, ...updates };
     setGameState(newState);
 
     await supabase
