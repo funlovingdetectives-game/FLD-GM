@@ -204,7 +204,11 @@ export function GameApp() {
           time_remaining: localConfig.stationDuration * 60,
           is_paused: false,
           team_quiz_unlocked: false,
-          individual_quiz_unlocked: false
+          individual_quiz_unlocked: false,
+          personal_quiz_unlocked: false,
+          scores_revealed: false,
+          pause_video_url: null,
+          game_ended: false
         });
 
         // Create team submissions

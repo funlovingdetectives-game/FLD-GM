@@ -184,10 +184,13 @@ export function useGame(gameId: string | null) {
         time_remaining: newState.timeRemaining,
         team_quiz_unlocked: newState.teamQuizUnlocked,
         individual_quiz_unlocked: newState.individualQuizUnlocked,
+        personal_quiz_unlocked: newState.personalQuizUnlocked || false,
         scores_revealed: newState.scoresRevealed,
         pause_video_url: newState.pauseVideoUrl,
         game_ended: newState.gameEnded,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'game_id'
       });
   };
 
